@@ -17,7 +17,7 @@ dependencies {
     compileOnly 'com.fortify.plugin:plugin-api:1.2.2320.0'
     testImplementation 'com.fortify.plugin:plugin-api:1.2.2320.0'
 
-    implementation 'org.slf4j:slf4j-api:2.0.16'
+    implementation 'org.slf4j:slf4j-api:2.0.18'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.3'
 
