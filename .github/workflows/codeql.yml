@@ -26,8 +26,11 @@ jobs:
         include:
           - language: java-kotlin
             build-mode: manual
+            # Keep the category used by earlier runs so alert history on main carries over.
+            category: /language:java
           - language: actions
             build-mode: none
+            category: /language:actions
 
     steps:
     - name: Checkout repository
@@ -57,4 +60,4 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
       with:
-        category: "/language:${{ matrix.language }}"
+        category: ${{ matrix.category }}
