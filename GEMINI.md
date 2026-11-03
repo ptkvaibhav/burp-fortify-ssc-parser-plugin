@@ -9,7 +9,9 @@ The goal is to create a Java-based plugin for Fortify SSC that enables the inges
 - **Language:** Java 17
 - **Build System:** Gradle (using `shadowJar` for fat JAR packaging)
 - **Framework:** Fortify Plugin SDK (SPI)
-- **Data Formats:** Burp Suite XML (`<items>` and `<issues>` roots), Fortify Internal Model
+- **Data Formats:** Burp Suite "Report selected issues" XML (`<issues>` root). `<items>` is accepted, but only entries with issue data are imported: Burp's "Save items" export is HTTP history and is rejected (`BurpParserPlugin.isScanIssue`).
+- **Display safety:** Anything that comes from the scanned application (HTTP messages, DOM values) must go through `BurpContentFormatter` (HTML escape plus safe truncation). Burp-authored HTML (detail, background, references) is passed through.
+- **Branding:** Never use OpenText/Fortify or PortSwigger logos. The artwork sources are in `docs/images/src`.
 
 ## Development Guidelines
 - **ID Stability:** Vulnerability IDs are an MD5 hex fingerprint of Issue Name, Host, Path and Location. Do not change the algorithm or inputs, or every existing issue in SSC will be re-created.

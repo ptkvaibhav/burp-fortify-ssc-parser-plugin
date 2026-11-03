@@ -48,7 +48,9 @@ public class SscContractTest {
 
         assertTrue(r.isOk(), () -> "SSC contract problems: " + r.getProblems());
         assertEquals("2025.12.4", r.getScan().get("setEngineVersion"));
-        assertEquals(3, r.getVulnerabilities().size());
+        assertEquals(java.time.Instant.parse("2026-01-07T10:15:30Z"),
+                ((java.util.Date) r.getScan().get("setScanDate")).toInstant(), "scan date comes from exportTime");
+        assertEquals(4, r.getVulnerabilities().size());
 
         Map<String, Object> sqli = r.getVulnerabilities().get(0);
         assertEquals("SQL injection", sqli.get("setCategory"));
@@ -60,7 +62,46 @@ public class SscContractTest {
         assertTrue(attrs.get("issueDetail").contains("username"));
         assertTrue(attrs.get("issueBackground").startsWith("<p>SQL injection"));
 
+        assertTrue(attrs.get("request").startsWith("<pre><code>POST /login HTTP/1.1"), attrs.get("request"));
+        assertTrue(attrs.get("response").contains("500 Internal Server Error"));
+        assertEquals("CWE-89", attrs.get("cwe"));
+        assertTrue(attrs.get("references").contains("portswigger.net/web-security/sql-injection"));
+
         assertEquals(BasicVulnerabilityBuilder.Priority.Low, r.getVulnerabilities().get(2).get("setPriority"));
+    }
+
+    @Test
+    public void testDomIssueWithPlainTextHttpAndDynamicAnalysis() throws Exception {
+        SscSimulator.Result r = run(artifact("burp-results.xml", resource("/burp-current-format.xml")));
+        Map<String, Object> dom = r.getVulnerabilities().get(3);
+        assertEquals("DOM-based cross-site scripting", dom.get("setCategory"));
+        @SuppressWarnings("unchecked")
+        Map<String, String> attrs = (Map<String, String>) dom.get("customAttributes");
+        assertEquals("CWE-79, CWE-116", attrs.get("cwe"));
+        // base64="false" content is used verbatim, and markup from the scanned app is escaped.
+        assertTrue(attrs.get("request").contains("GET /search?q=&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assertFalse(attrs.get("response").contains("<script>"));
+        assertTrue(attrs.get("response").contains("&lt;script&gt;document.getElementById"));
+        assertTrue(attrs.get("dynamicAnalysis").contains("<b>Source</b><br/>\nlocation.hash"));
+        assertTrue(attrs.get("dynamicAnalysis").contains("<b>Sink</b><br/>\nelement.innerHTML"));
+        assertFalse(attrs.get("dynamicAnalysis").contains("<img"));
+        // Issues without the optional elements get empty (not null) attributes.
+        @SuppressWarnings("unchecked")
+        Map<String, String> hsts = (Map<String, String>) r.getVulnerabilities().get(1).get("customAttributes");
+        assertEquals("", hsts.get("request"));
+        assertEquals("", hsts.get("dynamicAnalysis"));
+        assertEquals("", hsts.get("cwe"));
+    }
+
+    @Test
+    public void testIssueIdsAreUnchangedFromPreviousReleases() throws Exception {
+        // Golden IDs produced by released versions 2.0.0 / 2.0.1. Changing them would make SSC treat
+        // every existing issue as removed and re-added after an upgrade.
+        SscSimulator.Result r = run(artifact("burp-results.xml", resource("/burp-current-format.xml")));
+        assertEquals("85c18ccb23a856ae8d2cbf1a7290a687", r.getVulnerabilities().get(0).get("id"));
+        assertEquals("692882ba1132f4ff8712cac913f01eae", r.getVulnerabilities().get(1).get("id"));
+        SscSimulator.Result legacy = run(artifact("items.xml", resource("/sample-burp.xml")));
+        assertEquals("05ad996fa23d05d4f3ed62cc273cab65", legacy.getVulnerabilities().get(0).get("id"));
     }
 
     @Test
@@ -127,10 +168,32 @@ public class SscContractTest {
             java.nio.file.Files.write(tmp, bos.toByteArray());
             SscSimulator.Result r = run(SscSimulator.readArtifact(tmp));
             assertTrue(r.isOk(), () -> "SSC contract problems: " + r.getProblems());
-            assertEquals(3, r.getVulnerabilities().size());
+            assertEquals(4, r.getVulnerabilities().size());
         } finally {
             java.nio.file.Files.deleteIfExists(tmp);
         }
+    }
+
+    @Test
+    public void testBurpSavedItemsHistoryExportIsRejectedWithGuidance() throws Exception {
+        com.fortify.plugin.api.ScanParsingException e = org.junit.jupiter.api.Assertions.assertThrows(
+                com.fortify.plugin.api.ScanParsingException.class,
+                () -> run(artifact("history.xml", resource("/burp-saved-items-history.xml"))));
+        assertTrue(e.getMessage().contains("Report selected issues"), e.getMessage());
+    }
+
+    @Test
+    public void testNonIssueEntriesAreSkippedInMixedFiles() throws Exception {
+        String xml = "<items>"
+                + "<item><url>https://a.example.com/</url><host>a.example.com</host><method>GET</method>"
+                + "<path>/</path><status>200</status></item>"
+                + "<item><name>SQL injection</name><host>https://a.example.com</host><path>/q</path>"
+                + "<location>/q [id parameter]</location><severity>High</severity></item>"
+                + "</items>";
+        SscSimulator.Result r = run(artifact("mixed.xml", xml.getBytes(StandardCharsets.UTF_8)));
+        assertTrue(r.isOk(), () -> "SSC contract problems: " + r.getProblems());
+        assertEquals(1, r.getVulnerabilities().size());
+        assertEquals("SQL injection", r.getVulnerabilities().get(0).get("setCategory"));
     }
 
     @Test

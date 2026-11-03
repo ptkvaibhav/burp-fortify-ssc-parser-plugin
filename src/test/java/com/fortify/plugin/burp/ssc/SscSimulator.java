@@ -364,9 +364,16 @@ public final class SscSimulator {
         for (String arg : args) {
             for (String file : arg.split(",")) {
                 Path path = Paths.get(file.trim());
-                Result r = run(pluginClass.asSubclass(ParserPlugin.class).getDeclaredConstructor().newInstance(),
-                        readArtifact(path), "BURP");
                 System.out.printf(Locale.ROOT, "%n=== %s%n", path);
+                Result r;
+                try {
+                    r = run(pluginClass.asSubclass(ParserPlugin.class).getDeclaredConstructor().newInstance(),
+                            readArtifact(path), "BURP");
+                } catch (com.fortify.plugin.api.ScanParsingException e) {
+                    allOk = false;
+                    System.out.printf(Locale.ROOT, "Result         : REJECTED (SSC would show: %s)%n", e.getMessage());
+                    continue;
+                }
                 System.out.printf(Locale.ROOT, "Engine version : %s%n", r.getScan().get("setEngineVersion"));
                 System.out.printf(Locale.ROOT, "Issues ingested: %d %s%n", r.getVulnerabilities().size(),
                         r.priorityCounts());

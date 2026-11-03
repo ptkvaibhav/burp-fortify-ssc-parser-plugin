@@ -1,6 +1,6 @@
 # Fortify SSC Burp Suite Parser Plugin Wiki
 
-Welcome to the official Wiki for the **Fortify SSC Burp Suite Parser Plugin**. This wiki provides comprehensive documentation on setup, usage, architecture, and troubleshooting.
+Welcome to the Wiki for the **Burp Suite Parser Plugin for Fortify SSC**, an independent community project that is not affiliated with OpenText or PortSwigger. This wiki provides comprehensive documentation on setup, usage, architecture, and troubleshooting.
 
 ## Table of Contents
 1. [Home](#home)
@@ -17,7 +17,7 @@ This plugin bridges the gap between PortSwigger's **Burp Suite** and OpenText's 
 ### Why use this plugin?
 - **Unified Dashboard:** View SAST and DAST results in one place.
 - **Deduplication:** Stable, deterministic issue IDs (MD5 fingerprint of Issue Name, Host, Path and Location) prevent duplicate findings across scans.
-- **Rich Context:** Preserves Burp's "Issue Detail", "Issue Background", "Remediation Detail" and "Remediation Background" inside SSC custom attributes. (HTTP request/response pairs are not currently imported.)
+- **Rich Context:** Shows Burp's issue and remediation detail and background, the HTTP request/response evidence, CWE IDs, vulnerability classifications, references and DOM-based dynamic analysis inside SSC.
 - **Secure by Default:** The XML parser has DTD processing and external entity resolution disabled, so malicious uploads cannot trigger XXE or entity-expansion attacks.
 
 ---
@@ -46,7 +46,7 @@ Download the latest `burp-fortify-ssc-parser-plugin-X.X.X.jar` from the [GitHub 
 ### 1. Exporting from Burp Suite
 * Select the issues you want to export in Burp Suite.
 * Right-click and choose **Report selected issues**.
-* Choose **XML** format (both `Saved Items` `<items>` and `Burp Reports` `<issues>` formats are supported).
+* Choose **XML** format. Note that Burp's separate **Save items** command (Proxy / HTTP history) produces a list of HTTP messages, not scan findings. The plugin rejects such files with a message explaining this.
 * Ensure you include all relevant data (Requests, Responses, Issue Background, etc.).
 
 ### 2. Packaging the Scan Artifact
@@ -69,9 +69,9 @@ Fortify requires a metadata file to know which parser to invoke.
 The plugin implements the `ParserPlugin<BurpVulnerabilityAttribute>` interface from the Fortify Plugin SDK (`com.fortify.plugin:plugin-api`).
 
 ### Data Flow
-1. **`parseScan()`**: Validates the ZIP artifact, locates the XML file (case-insensitive `.xml`), and records the Burp version as the engine version. The scan date is set to the upload/processing time.
-2. **`parseVulnerabilities()`**: Uses a hardened Jackson `XmlMapper` (Woodstox, DTD/external entities disabled) to parse the `<items>/<item>` or `<issues>/<issue>` elements into `BurpItem` objects.
-3. **Mapping**: Translates Burp severity to Fortify priority (`High` -> `High`, `Medium` -> `Medium`, `Low`/`Information` -> `Low`), Burp confidence to Fortify confidence (`Certain` = 5, `Firm` = 3, `Tentative` = 1) and severity to impact. Duplicate issues within the same file are reported once.
+1. **`parseScan()`**: Validates the ZIP artifact, locates the XML file (case-insensitive `.xml`), records the Burp version as the engine version, and takes the scan date from Burp's `exportTime`. If that can't be parsed, it uses the upload time. Zone abbreviations are resolved independently of the server's locale and time zone. The ambiguous `IST` is read as India Standard Time (UTC+05:30); an export from Israel or Ireland would show a time a few hours off, but the date is right.
+2. **`parseVulnerabilities()`**: Uses a hardened Jackson `XmlMapper` (Woodstox, DTD/external entities disabled) to parse the `<issues>/<issue>` elements into `BurpItem` objects. An `<items>/<item>` root is also accepted, but only entries that carry issue data (name, type or severity) are imported, so HTTP-history exports are never turned into issues.
+3. **Mapping**: Decodes HTTP messages (honouring the `base64` flag), HTML-escapes content that comes from the scanned application, extracts CWE IDs and truncates every field to the plugin-API limits. Translates Burp severity to Fortify priority (`High` -> `High`, `Medium` -> `Medium`, `Low`/`Information` -> `Low`), Burp confidence to Fortify confidence (`Certain` = 5, `Firm` = 3, `Tentative` = 1) and severity to impact. Duplicate issues within the same file are reported once.
 4. **Vulnerability Builder**: Constructs the Fortify model, populating standard fields and assigning `BurpVulnerabilityAttribute` custom fields.
 
 ### View Template
@@ -92,8 +92,20 @@ The custom UI layout is defined in `src/main/resources/viewtemplate/ViewTemplate
 **Solution:** Use an unmodified Burp XML export; standard Burp exports do not rely on custom entities.
 
 **Error:** `Failed to parse Burp XML file.`
-**Cause:** The XML file is malformed, empty, or does not have a recognizable root element (`<items>` or `<issues>`).
+**Cause:** The XML file is malformed, empty, or does not have a recognizable root element (`<issues>`).
+
+**Error:** `The uploaded XML contains no Burp scan issues. It looks like a Burp 'Save items' (HTTP history) export...`
+**Cause:** The file came from Burp's *Save items* command, which exports HTTP traffic, not findings.
+**Solution:** In Burp's dashboard or Issues view, select the issues, then use **Report selected issues** → **XML**.
 **Solution:** Re-export the XML from Burp Suite and verify it opens correctly in a browser or text editor.
+
+**Error:** HTTP Request / Response sections are empty.
+**Cause:** The Burp export was created without requests and responses, or the issue has no evidence (for example passive or informational issues).
+**Solution:** Re-export with requests and responses included. The *Base64-encode* option can be on or off.
+
+**Error:** `Plugin cannot be installed` after downgrading from 2.1.x to 2.0.x.
+**Cause:** 2.1.0 raised the plugin `data-version`, and SSC refuses plugins with a lower data version.
+**Solution:** Stay on 2.1.x or later.
 
 **Error:** `Plugin is disabled.`
 **Cause:** SSC administrators must explicitly enable third-party plugins after uploading them.

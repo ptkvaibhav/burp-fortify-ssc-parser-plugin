@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.fortify.plugin'
-version = '2.0.1'
+version = '2.1.0'
 
 repositories {
     mavenCentral()
@@ -67,7 +67,7 @@ def verifyPluginJar = tasks.register('verifyPluginJar') {
             def names = zip.entries().collect { it.name }
             def problems = []
             ['plugin.xml', 'META-INF/services/com.fortify.plugin.spi.ParserPlugin',
-             'viewtemplate/ViewTemplate.json', 'images/icon.png', 'images/logo.png',
+             'viewtemplate/ViewTemplate.json', 'resources/messages_en.properties', 'images/icon.png', 'images/logo.png',
              'com/fortify/plugin/burp/BurpParserPlugin.class'].each {
                 if (!names.contains(it)) { problems << "missing ${it}" }
             }

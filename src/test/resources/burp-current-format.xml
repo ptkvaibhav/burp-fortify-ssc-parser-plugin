@@ -130,4 +130,49 @@
       </requestresponse>
     </collaboratorEvent>
   </issue>
+  <issue>
+    <serialNumber>4444444444444444444</serialNumber>
+    <type>2097936</type>
+    <name>DOM-based cross-site scripting</name>
+    <host ip="192.0.2.10">https://app.example.com</host>
+    <path><![CDATA[/search]]></path>
+    <location><![CDATA[/search]]></location>
+    <severity>Medium</severity>
+    <confidence>Firm</confidence>
+    <issueBackground><![CDATA[<p>DOM-based vulnerabilities arise when a client-side script reads data from a controllable part of the DOM and processes it unsafely.</p>]]></issueBackground>
+    <vulnerabilityClassifications><![CDATA[<ul><li><a href="https://cwe.mitre.org/data/definitions/79.html">CWE-79: Improper Neutralization of Input During Web Page Generation</a></li><li><a href="https://cwe.mitre.org/data/definitions/116.html">CWE-116: Improper Encoding or Escaping of Output</a></li></ul>]]></vulnerabilityClassifications>
+    <issueDetail><![CDATA[The application may be vulnerable to DOM-based cross-site scripting.]]></issueDetail>
+    <requestresponse>
+      <request method="GET" base64="false"><![CDATA[GET /search?q=<script>alert(1)</script> HTTP/1.1
+Host: app.example.com
+
+]]></request>
+      <response base64="false"><![CDATA[HTTP/1.1 200 OK
+Content-Type: text/html
+
+<html><body><div id="r"></div><script>document.getElementById('r').innerHTML = location.hash;</script></body></html>]]></response>
+      <responseRedirected>false</responseRedirected>
+    </requestresponse>
+    <dynamicAnalysis>
+      <source>location.hash</source>
+      <sink>element.innerHTML</sink>
+      <sourceStackTrace><![CDATA[at https://app.example.com/search:1:45]]></sourceStackTrace>
+      <sinkStackTrace><![CDATA[at https://app.example.com/search:1:60]]></sinkStackTrace>
+      <eventListenerStackTrace></eventListenerStackTrace>
+      <sourceValue><![CDATA[#<img src=x onerror=alert(1)>]]></sourceValue>
+      <sinkValue><![CDATA[<img src=x onerror=alert(1)>]]></sinkValue>
+      <eventHandlerData></eventHandlerData>
+      <eventHandlerDataType></eventHandlerDataType>
+      <eventHandlerManipulatedData></eventHandlerManipulatedData>
+      <poc><![CDATA[https://app.example.com/search#<img src=x onerror=alert(1)>]]></poc>
+      <origin></origin>
+      <isOriginChecked>false</isOriginChecked>
+      <sourceElementId></sourceElementId>
+      <sourceElementName></sourceElementName>
+      <eventFiredEventName></eventFiredEventName>
+      <eventFiredElementId></eventFiredElementId>
+      <eventFiredElementName></eventFiredElementName>
+      <eventFiredOuterHtml></eventFiredOuterHtml>
+    </dynamicAnalysis>
+  </issue>
 </issues>

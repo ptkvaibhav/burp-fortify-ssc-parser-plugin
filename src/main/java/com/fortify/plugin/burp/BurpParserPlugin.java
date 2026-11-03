@@ -21,6 +21,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.xml.stream.XMLInputFactory;
@@ -39,6 +40,10 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
     static final int MAX_ABSTRACT_LENGTH = 1024;
     /** SSC limit for {@code LONG_STRING} custom attributes, as defined by the plugin API. */
     static final int MAX_LONG_ATTRIBUTE_LENGTH = VulnerabilityAttribute.MAX_LONG_STRING_LENGTH;
+    /** Shown in SSC when an upload contains Burp XML that is not a scan report. */
+    static final String NOT_A_SCAN_REPORT_MESSAGE = "The uploaded XML contains no Burp scan issues. It looks like a "
+            + "Burp 'Save items' (HTTP history) export. In Burp, select the issues and use "
+            + "'Report selected issues' > XML instead.";
     private final XmlMapper xmlMapper = createSecureXmlMapper();
 
     /**
@@ -89,10 +94,22 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
                 LOG.error("Failed to parse Burp XML file for session: {}", scanData.getSessionId());
                 throw new ScanParsingException("Failed to parse Burp XML file.");
             }
+            List<BurpItem> entries = burpItems.getItems();
+            if (entries != null && !entries.isEmpty() && entries.stream().noneMatch(BurpParserPlugin::isScanIssue)) {
+                LOG.error("Uploaded XML contains {} entries but no Burp scan issues (session {})",
+                        entries.size(), scanData.getSessionId());
+                throw new ScanParsingException(NOT_A_SCAN_REPORT_MESSAGE);
+            }
             String version = burpItems.getBurpVersion();
             LOG.info("Detected Burp version: {}", version);
             scanBuilder.setEngineVersion(safeTruncate(version != null ? version : "Unknown", MAX_FIELD_LENGTH));
-            scanBuilder.setScanDate(new Date());
+            Date scanDate = BurpContentFormatter.parseExportTime(burpItems.getExportTime());
+            if (scanDate == null) {
+                LOG.warn("Could not parse Burp exportTime '{}'; using the upload time as scan date",
+                        burpItems.getExportTime());
+                scanDate = new Date();
+            }
+            scanBuilder.setScanDate(scanDate);
             scanBuilder.completeScan();
         } catch (Exception e) {
             LOG.error("Error parsing scan: {}", e.getMessage(), e);
@@ -111,6 +128,10 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
                     LOG.info("Found {} issues in Burp XML", burpItems.getItems().size());
                     Set<String> reportedIds = new HashSet<>();
                     for (BurpItem item : burpItems.getItems()) {
+                        if (!isScanIssue(item)) {
+                            LOG.warn("Skipping XML entry without issue data (not a Burp scan issue)");
+                            continue;
+                        }
                         String uniqueId = generateUniqueId(item);
                         if (reportedIds.add(uniqueId)) {
                             reportIssue(vulnerabilityHandler, item, uniqueId);
@@ -128,6 +149,19 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
             LOG.error("Error parsing vulnerabilities: {}", e.getMessage(), e);
             throw e;
         }
+    }
+
+    /**
+     * Burp's "Save items" export (Proxy/HTTP history) also uses an {@code <items>/<item>} structure, but
+     * its entries are HTTP messages (url, method, status, ...) rather than scan findings. An entry is only
+     * treated as a scan issue if it carries issue data.
+     */
+    static boolean isScanIssue(BurpItem item) {
+        return item != null && (notBlank(item.getName()) || notBlank(item.getType()) || notBlank(item.getSeverity()));
+    }
+
+    private static boolean notBlank(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private void reportIssue(VulnerabilityHandler vulnerabilityHandler, BurpItem item, String uniqueId) {
@@ -161,6 +195,18 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_DETAIL, safeTruncate(item.getRemediationDetail(), MAX_LONG_ATTRIBUTE_LENGTH));
         builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_BACKGROUND,
                 safeTruncate(item.getRemediationBackground(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.CWE,
+                safeTruncate(BurpContentFormatter.extractCwes(item.getVulnerabilityClassifications()), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.VULNERABILITY_CLASSIFICATIONS,
+                safeTruncate(item.getVulnerabilityClassifications(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REFERENCES,
+                safeTruncate(item.getReferences(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REQUEST,
+                BurpContentFormatter.formatHttpMessages(item.getRequestResponses(), true, MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.RESPONSE,
+                BurpContentFormatter.formatHttpMessages(item.getRequestResponses(), false, MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.DYNAMIC_ANALYSIS,
+                BurpContentFormatter.formatDynamicAnalyses(item.getDynamicAnalyses(), MAX_LONG_ATTRIBUTE_LENGTH));
         
         builder.completeVulnerability();
     }

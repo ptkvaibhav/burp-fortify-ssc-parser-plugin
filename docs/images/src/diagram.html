@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root { --bg:#ffffff; --card:#F8FAFC; --border:#CBD5E1; --text:#0F172A; --muted:#475569; --accent:#2563EB; --accent2:#0E7490; --chip:#E0F2FE; --chiptext:#075985; }
+body.dark { --bg:#0D1117; --card:#161B22; --border:#30363D; --text:#E6EDF3; --muted:#9DA7B3; --accent:#60A5FA; --accent2:#22D3EE; --chip:#0C2D48; --chiptext:#BAE6FD; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); font-family:'DejaVu Sans', Arial, sans-serif; color:var(--text); }
+.wrap { width:900px; padding:22px 20px; display:flex; align-items:stretch; gap:0; }
+.box { flex:1; background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:16px 16px 14px; }
+.box.mid { flex:1.25; border:2px solid var(--accent); }
+.step { font-size:11px; font-weight:700; letter-spacing:.08em; color:var(--accent2); text-transform:uppercase; }
+h3 { margin:6px 0 8px; font-size:17px; }
+p { margin:0; font-size:12.5px; color:var(--muted); line-height:1.45; }
+.chips { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+.chip { background:var(--chip); color:var(--chiptext); font-size:11px; padding:3px 7px; border-radius:999px; }
+.arrow { width:42px; display:flex; align-items:center; justify-content:center; }
+code { font-size:11.5px; background:var(--chip); color:var(--chiptext); padding:1px 4px; border-radius:4px; }
+</style></head><body class="THEME"><div class="wrap">
+ <div class="box"><div class="step">1 · Scan</div><h3>Burp Suite</h3>
+  <p>Professional or DAST. Select the issues, then <b>Report selected issues → XML</b>.</p>
+  <p style="margin-top:8px">Zip the XML with a <code>scan.info</code> containing <code>engineType=BURP</code>.</p></div>
+ <div class="arrow"><svg width="34" height="24" viewBox="0 0 34 24"><path d="M2 12 H28 M20 4 L29 12 L20 20" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+ <div class="box mid"><div class="step">2 · Parse</div><h3>Burp → SSC Parser Plugin</h3>
+  <p>Maps every Burp issue to a Fortify vulnerability.</p>
+  <div class="chips"><span class="chip">Stable issue IDs</span><span class="chip">Severity &amp; confidence</span><span class="chip">CWE</span><span class="chip">HTTP request / response</span><span class="chip">DOM analysis</span><span class="chip">XXE-safe parsing</span></div></div>
+ <div class="arrow"><svg width="34" height="24" viewBox="0 0 34 24"><path d="M2 12 H28 M20 4 L29 12 L20 20" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+ <div class="box"><div class="step">3 · Track</div><h3>Fortify SSC</h3>
+  <p>OpenText Application Security 23.2+. Burp findings sit next to SAST results and are tracked as new, fixed or reintroduced across scans.</p></div>
+</div></body></html>
