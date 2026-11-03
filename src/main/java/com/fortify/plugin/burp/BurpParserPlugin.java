@@ -10,6 +10,7 @@ import com.fortify.plugin.api.ScanParsingException;
 import com.fortify.plugin.api.StaticVulnerabilityBuilder;
 import com.fortify.plugin.api.VulnerabilityHandler;
 import com.fortify.plugin.spi.ParserPlugin;
+import com.fortify.plugin.spi.VulnerabilityAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,13 @@ import javax.xml.stream.XMLInputFactory;
  */
 public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute> {
     private static final Logger LOG = LoggerFactory.getLogger(BurpParserPlugin.class);
+
+    /** Conservative limit for core SSC string fields (category, file name, engine version). */
+    static final int MAX_FIELD_LENGTH = 255;
+    /** Limit for the vulnerability abstract. */
+    static final int MAX_ABSTRACT_LENGTH = 1024;
+    /** SSC limit for {@code LONG_STRING} custom attributes, as defined by the plugin API. */
+    static final int MAX_LONG_ATTRIBUTE_LENGTH = VulnerabilityAttribute.MAX_LONG_STRING_LENGTH;
     private final XmlMapper xmlMapper = createSecureXmlMapper();
 
     /**
@@ -83,7 +91,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
             }
             String version = burpItems.getBurpVersion();
             LOG.info("Detected Burp version: {}", version);
-            scanBuilder.setEngineVersion(safeTruncate(version != null ? version : "Unknown", 255));
+            scanBuilder.setEngineVersion(safeTruncate(version != null ? version : "Unknown", MAX_FIELD_LENGTH));
             scanBuilder.setScanDate(new Date());
             scanBuilder.completeScan();
         } catch (Exception e) {
@@ -126,7 +134,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         StaticVulnerabilityBuilder builder = vulnerabilityHandler.startStaticVulnerability(uniqueId);
         
         String name = item.getName() != null ? item.getName() : "Unknown";
-        builder.setCategory(safeTruncate(name, 255));
+        builder.setCategory(safeTruncate(name, MAX_FIELD_LENGTH));
         
         String host = item.getHost() != null ? item.getHost() : "";
         String path = item.getPath() != null ? item.getPath() : "";
@@ -134,25 +142,25 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         if (fileName.isEmpty()) {
             fileName = "Unknown";
         }
-        builder.setFileName(safeTruncate(fileName, 255));
+        builder.setFileName(safeTruncate(fileName, MAX_FIELD_LENGTH));
         
         builder.setPriority(mapPriority(item.getSeverity()));
         builder.setConfidence(mapConfidence(item.getConfidence()));
         builder.setImpact(mapImpact(item.getSeverity()));
         
         String detail = item.getIssueDetail() != null ? item.getIssueDetail() : name;
-        builder.setVulnerabilityAbstract(safeTruncate(detail, 1024));
+        builder.setVulnerabilityAbstract(safeTruncate(detail, MAX_ABSTRACT_LENGTH));
         
         // Custom attributes - Ensure non-null to avoid SSC rendering issues
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_NAME, safeTruncate(item.getName(), 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.SEVERITY, safeTruncate(item.getSeverity(), 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.CONFIDENCE, safeTruncate(item.getConfidence(), 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.FULL_FILE_NAME, safeTruncate(host + path, 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_DETAIL, safeTruncate(item.getIssueDetail(), 32000));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_BACKGROUND, safeTruncate(item.getIssueBackground(), 32000));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_DETAIL, safeTruncate(item.getRemediationDetail(), 32000));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_NAME, safeTruncate(item.getName(), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.SEVERITY, safeTruncate(item.getSeverity(), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.CONFIDENCE, safeTruncate(item.getConfidence(), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.FULL_FILE_NAME, safeTruncate(host + path, MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_DETAIL, safeTruncate(item.getIssueDetail(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_BACKGROUND, safeTruncate(item.getIssueBackground(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_DETAIL, safeTruncate(item.getRemediationDetail(), MAX_LONG_ATTRIBUTE_LENGTH));
         builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_BACKGROUND,
-                safeTruncate(item.getRemediationBackground(), 32000));
+                safeTruncate(item.getRemediationBackground(), MAX_LONG_ATTRIBUTE_LENGTH));
         
         builder.completeVulnerability();
     }

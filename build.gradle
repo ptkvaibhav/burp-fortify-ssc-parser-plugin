@@ -7,7 +7,7 @@ plugins {
 }
 
 group = 'com.fortify.plugin'
-version = '2.0.0'
+version = '2.0.1'
 
 repositories {
     mavenCentral()
@@ -17,7 +17,10 @@ dependencies {
     compileOnly 'com.fortify.plugin:plugin-api:1.2.2320.0'
     testImplementation 'com.fortify.plugin:plugin-api:1.2.2320.0'
 
-    implementation 'org.slf4j:slf4j-api:2.0.20'
+    // Provided by the SSC plugin runtime (see the official fortify/sample-parser). It must not be
+    // bundled: a private copy has no logging provider and silently drops all plugin log output.
+    compileOnly 'org.slf4j:slf4j-api:2.0.20'
+    testImplementation 'org.slf4j:slf4j-api:2.0.20'
     // The BOM keeps every Jackson module on the same version (avoids databind/dataformat drift).
     implementation platform('com.fasterxml.jackson:jackson-bom:2.22.4')
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
@@ -48,7 +51,51 @@ shadowJar {
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'plugin.version', project.version
     finalizedBy jacocoTestReport
+}
+
+// Verifies the deployable JAR has the layout Fortify SSC requires before it is ever uploaded.
+def verifyPluginJar = tasks.register('verifyPluginJar') {
+    description = 'Checks the shaded plugin JAR against Fortify SSC packaging rules.'
+    group = 'verification'
+    def jarFile = tasks.named('shadowJar').flatMap { it.archiveFile }
+    inputs.file(jarFile)
+    doLast {
+        def zip = new java.util.zip.ZipFile(jarFile.get().asFile)
+        try {
+            def names = zip.entries().collect { it.name }
+            def problems = []
+            ['plugin.xml', 'META-INF/services/com.fortify.plugin.spi.ParserPlugin',
+             'viewtemplate/ViewTemplate.json', 'images/icon.png', 'images/logo.png',
+             'com/fortify/plugin/burp/BurpParserPlugin.class'].each {
+                if (!names.contains(it)) { problems << "missing ${it}" }
+            }
+            if (names.any { it.endsWith('.jar') }) { problems << 'nested JARs are not supported by SSC' }
+            if (names.any { it.startsWith('com/fortify/plugin/api/') || it.startsWith('com/fortify/plugin/spi/') }) {
+                problems << 'plugin-api classes must not be bundled (provided by SSC)'
+            }
+            if (names.any { it.startsWith('org/slf4j/') }) { problems << 'slf4j must not be bundled (provided by SSC)' }
+            if (names.any { it.startsWith('com/fasterxml/jackson/') }) { problems << 'Jackson must be relocated' }
+            if (!problems.isEmpty()) {
+                throw new GradleException("Plugin JAR verification failed:\n - " + problems.join('\n - '))
+            }
+            logger.lifecycle("Plugin JAR OK: ${jarFile.get().asFile.name} (${names.size()} entries)")
+        } finally {
+            zip.close()
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyPluginJar }
+
+// Offline SSC ingestion check for real Burp exports, e.g.
+//   ./gradlew verifyReport -Preport=/path/to/burp.xml[,/path/to/artifact.zip]
+tasks.register('verifyReport', JavaExec) {
+    description = 'Runs Burp XML exports or SSC upload ZIPs through the offline SSC contract simulator.'
+    group = 'verification'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.fortify.plugin.burp.ssc.SscSimulator'
+    args((project.findProperty('report') ?: '').toString().split(',').findAll { it })
 }
 
 jacocoTestReport {

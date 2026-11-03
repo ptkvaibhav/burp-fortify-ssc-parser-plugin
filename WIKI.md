@@ -25,7 +25,7 @@ This plugin bridges the gap between PortSwigger's **Burp Suite** and OpenText's 
 ## Prerequisites & Installation
 
 ### Requirements
-- **Fortify SSC:** Version 19.x or newer (fully compatible with 25.4.0).
+- **Fortify SSC / OpenText Application Security:** 23.2 or newer (SSC runs on JDK 17 from 23.2; the plugin is compiled for Java 17).
 - **Burp Suite:** Any edition (Professional/Enterprise) capable of exporting XML.
 - **Java:** JDK 17 (for building from source; the Gradle toolchain targets Java 17).
 
@@ -99,5 +99,12 @@ The custom UI layout is defined in `src/main/resources/viewtemplate/ViewTemplate
 **Cause:** SSC administrators must explicitly enable third-party plugins after uploading them.
 **Solution:** Go to **Administration > Plugins > Parsers** and enable the Burp parser.
 
+**Error:** `Plugin cannot be installed` / version conflict.
+**Cause:** SSC blocks installing an older version of a plugin while a newer one is installed, and only one version can be enabled at a time.
+**Solution:** Disable the old version, then enable the new one. To downgrade, remove the newer version first.
+
+### Testing Without SSC
+Run `./gradlew verifyReport -Preport=/path/to/export.xml` to push a real Burp export (or an SSC upload ZIP) through the offline SSC contract simulator. It reports the number of issues per priority and any problem SSC would reject.
+
 ### Viewing Logs
-If you encounter parsing exceptions, you can review the detailed Fortify SSC logs located typically at `<fortify.home>/<app_context>/logs/ssc.log`. Search for `com.fortify.plugin.burp` to see parser-specific debug information.
+If you encounter parsing exceptions, you can review the detailed Fortify SSC logs located typically at `<fortify.home>/<app_context>/logs/ssc.log`. Search for `com.fortify.plugin.burp` to see parser-specific debug information. Plugin-container output is also written to `plugin-framework.log` under `<fortify.plugins.home>/log`.

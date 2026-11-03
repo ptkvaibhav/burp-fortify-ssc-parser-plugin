@@ -8,8 +8,8 @@
     <a href="https://github.com/ptkvaibhav/burp-fortify-ssc-parser-plugin/actions/workflows/codeql.yml"><img src="https://github.com/ptkvaibhav/burp-fortify-ssc-parser-plugin/actions/workflows/codeql.yml/badge.svg" alt="CodeQL" /></a>
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" />
     <img src="https://img.shields.io/badge/Java-17-orange" alt="Java" />
-    <img src="https://img.shields.io/badge/Fortify_SSC-19.x+-brightgreen" alt="Fortify" />
-    <img src="https://img.shields.io/badge/Version-2.0.0-blueviolet" alt="Version" />
+    <img src="https://img.shields.io/badge/Fortify_SSC-23.2+-brightgreen" alt="Fortify" />
+    <img src="https://img.shields.io/badge/Version-2.0.1-blueviolet" alt="Version" />
   </p>
 </div>
 
@@ -35,7 +35,7 @@ Fortify SSC relies on external plugins to support third-party security tools. Th
 ### Prerequisites
 - **Java:** JDK 17
 - **Build Tool:** Gradle 9.8.2 via the bundled wrapper (`./gradlew`) — no local Gradle install required
-- **Fortify SSC:** Version 19.x or later (fully tested and compatible with modern releases)
+- **Fortify SSC / OpenText Application Security:** 23.2 or later (see [Compatibility](#-compatibility))
 - **Burp Suite:** Export capabilities to XML
 
 ### Building the Plugin
@@ -52,7 +52,7 @@ cd burp-fortify-ssc-parser-plugin
 ```
 
 The resulting deployment artifact will be located at:
-`build/libs/burp-fortify-ssc-parser-plugin-2.0.0.jar`
+`build/libs/burp-fortify-ssc-parser-plugin-2.0.1.jar`
 
 > **Note:** `build/libs/` also contains a `*-plain.jar` (unshaded classes only). Do **not** upload that one to SSC.
 
@@ -63,7 +63,7 @@ The resulting deployment artifact will be located at:
 ### 1. Install into Fortify SSC
 1. Log in to your Fortify SSC instance with Administrator privileges.
 2. Navigate to **Administration > Plugins > Parsers**.
-3. Click **Add** and upload the `burp-fortify-ssc-parser-plugin-2.0.0.jar` file.
+3. Click **Add** and upload the `burp-fortify-ssc-parser-plugin-2.0.1.jar` file.
 4. **Important:** After uploading, locate the "Burp Suite Parser Plugin" in the list and click **Enable**.
 
 ### 2. Uploading Scan Results
@@ -77,6 +77,27 @@ Fortify SSC requires uploaded artifacts to specify their engine type.
    ```
 4. Create a ZIP archive (e.g., `results.zip`) containing both `burp-results.xml` and `scan.info`.
 5. Upload `results.zip` to your chosen Application Version in Fortify SSC.
+
+---
+
+## ✅ Compatibility
+
+| Component | Supported | Notes |
+| --- | --- | --- |
+| Fortify SSC / OpenText Application Security | **23.2 – 26.x** | The plugin is compiled for Java 17; SSC runs on JDK 17 from 23.2 onwards (earlier releases run on Java 11 and cannot load it). Built against the latest published `plugin-api` (1.2.2320.0, "supported since SSC 23.2.0") but only uses API 1.0 features, and the manifest validates against the official `pluginmanifest-1.0.xsd`. |
+| Burp Suite Professional / DAST | 1.6 – 2025.x XML exports | Both `<issues>` (Report selected issues → XML) and `<items>` (Saved items) roots. Unknown/newer optional elements (e.g. `collaboratorEvent`, `staticAnalysis`, `dynamicAnalysis`) are ignored. |
+
+> **Upgrading from 2.0.0:** the plugin ID and `data-version` are unchanged, so issue IDs stay stable. In SSC, upload 2.0.1, disable 2.0.0, then enable 2.0.1 (only one version of a plugin can be enabled at a time).
+
+### Verifying without access to SSC
+
+The test suite includes an **offline SSC simulator** (`SscSimulator`) that drives the plugin exactly like the SSC plugin runtime does and enforces SSC's parser contract (unique and stable IDs, every vulnerability completed, mandatory fields, declared custom attributes within the plugin-API length limits, `completeScan()` called, `scan.info` engine type). `./gradlew build` also validates `plugin.xml` against the official XSD and checks the JAR layout (`verifyPluginJar`).
+
+Run it against your own Burp exports or SSC upload ZIPs before uploading:
+
+```bash
+./gradlew verifyReport -Preport=/path/to/burp-results.xml,/path/to/results.zip
+```
 
 ---
 

@@ -25,6 +25,6 @@ Please include:
 ## Security Measures
 
 - **Hardened XML parsing:** Uploaded Burp XML is untrusted input. DTD processing and external entity resolution are disabled to prevent XXE and entity-expansion attacks; regression tests (`XmlSecurityTest`) enforce this.
-- **Dependency isolation:** Jackson is relocated inside the shaded JAR to avoid classloader conflicts with Fortify SSC.
+- **Dependency isolation:** Jackson is relocated inside the shaded JAR to avoid classloader conflicts with Fortify SSC; `plugin-api` and SLF4J are provided by SSC and are not bundled (enforced by `verifyPluginJar`).
 - **Automated scanning:** CodeQL (Java and GitHub Actions workflows), Dependabot version/security updates, and OWASP Dependency-Check (`./gradlew dependencyCheckAnalyze`, fails on CVSS ≥ 7.0).
 - **Least-privilege CI:** GitHub Actions workflows run with read-only `contents` permissions by default.

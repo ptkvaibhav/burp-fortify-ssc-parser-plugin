@@ -4,7 +4,7 @@
         id="com.fortify.plugin.burp.BurpParserPlugin" api-version="1.0">
     <plugin-info>
         <name>Burp Suite Parser Plugin</name>
-        <version>2.0.0</version>
+        <version>2.0.1</version>
         <data-version>1</data-version>
         <vendor name="Pratik Vaibhav" url="https://github.com/ptkvaibhav/burp-fortify-ssc-parser-plugin"/>
         <description>Parser for Burp Suite vulnerability scanner results.</description>
