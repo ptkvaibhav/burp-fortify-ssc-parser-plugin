@@ -20,12 +20,13 @@ A clear and concise description of what you expected to happen.
 
 **Screenshots/Logs**
 If applicable, add screenshots or error logs to help explain your problem.
+**Please redact hostnames, IPs, credentials and any sensitive request/response data before posting — issues are public.**
 
 **Environment (please complete the following information):**
  - OS: [e.g. Windows, Linux]
  - Fortify SSC Version: [e.g. 25.4.0]
  - Burp Suite Version: [e.g. 2023.10.1]
- - Parser Plugin Version: [e.g. 1.0.0]
+ - Parser Plugin Version: [e.g. 2.0.0]
 
 **Additional context**
 Add any other context about the problem here.

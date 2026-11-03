@@ -1,13 +1,13 @@
 plugins {
     id 'java-library'
-    id 'com.gradleup.shadow' version '9.4.1'
-    id 'org.owasp.dependencycheck' version '12.2.2'
+    id 'com.gradleup.shadow' version '9.6.1'
+    id 'org.owasp.dependencycheck' version '13.0.0'
     id 'checkstyle'
     id 'jacoco'
 }
 
 group = 'com.fortify.plugin'
-version = '2.0.0'
+version = '2.0.1'
 
 repositories {
     mavenCentral()
@@ -17,13 +17,18 @@ dependencies {
     compileOnly 'com.fortify.plugin:plugin-api:1.2.2320.0'
     testImplementation 'com.fortify.plugin:plugin-api:1.2.2320.0'
 
-    implementation 'org.slf4j:slf4j-api:2.0.16'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.3'
+    // Provided by the SSC plugin runtime (see the official fortify/sample-parser). It must not be
+    // bundled: a private copy has no logging provider and silently drops all plugin log output.
+    compileOnly 'org.slf4j:slf4j-api:2.0.20'
+    testImplementation 'org.slf4j:slf4j-api:2.0.20'
+    // The BOM keeps every Jackson module on the same version (avoids databind/dataformat drift).
+    implementation platform('com.fasterxml.jackson:jackson-bom:2.22.4')
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.0'
-    testImplementation 'org.mockito:mockito-core:5.23.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.23.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.3'
+    testImplementation 'org.mockito:mockito-core:5.24.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.24.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -33,6 +38,12 @@ java {
     }
 }
 
+// The plain (non-shaded) jar would otherwise be written to the same file name as the
+// shaded plugin jar. Give it a distinct classifier so the deployable artifact is unambiguous.
+tasks.named('jar') {
+    archiveClassifier.set('plain')
+}
+
 shadowJar {
     archiveClassifier.set('')
     relocate 'com.fasterxml.jackson', 'com.fortify.plugin.burp.shadow.jackson'
@@ -40,7 +51,64 @@ shadowJar {
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'plugin.version', project.version
     finalizedBy jacocoTestReport
+}
+
+// Verifies the deployable JAR has the layout Fortify SSC requires before it is ever uploaded.
+def verifyPluginJar = tasks.register('verifyPluginJar') {
+    description = 'Checks the shaded plugin JAR against Fortify SSC packaging rules.'
+    group = 'verification'
+    def jarFile = tasks.named('shadowJar').flatMap { it.archiveFile }
+    inputs.file(jarFile)
+    doLast {
+        def zip = new java.util.zip.ZipFile(jarFile.get().asFile)
+        try {
+            def names = zip.entries().collect { it.name }
+            def problems = []
+            ['plugin.xml', 'META-INF/services/com.fortify.plugin.spi.ParserPlugin',
+             'viewtemplate/ViewTemplate.json', 'images/icon.png', 'images/logo.png',
+             'com/fortify/plugin/burp/BurpParserPlugin.class'].each {
+                if (!names.contains(it)) { problems << "missing ${it}" }
+            }
+            if (names.any { it.endsWith('.jar') }) { problems << 'nested JARs are not supported by SSC' }
+            if (names.any { it.startsWith('com/fortify/plugin/api/') || it.startsWith('com/fortify/plugin/spi/') }) {
+                problems << 'plugin-api classes must not be bundled (provided by SSC)'
+            }
+            if (names.any { it.startsWith('org/slf4j/') }) { problems << 'slf4j must not be bundled (provided by SSC)' }
+            if (names.any { it.startsWith('com/fasterxml/jackson/') }) { problems << 'Jackson must be relocated' }
+            if (!problems.isEmpty()) {
+                throw new GradleException("Plugin JAR verification failed:\n - " + problems.join('\n - '))
+            }
+            logger.lifecycle("Plugin JAR OK: ${jarFile.get().asFile.name} (${names.size()} entries)")
+        } finally {
+            zip.close()
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyPluginJar }
+
+// Offline SSC ingestion check for real Burp exports, run against the actual shaded release JAR, e.g.
+//   ./gradlew verifyReport -Preport=/path/to/burp.xml[,/path/to/artifact.zip]
+// The classpath mirrors SSC: the plugin JAR plus only what SSC provides (plugin-api, SLF4J) and the
+// simulator itself, so packaging mistakes (missing classes, bad relocation, services file) are caught.
+tasks.register('verifyReport', JavaExec) {
+    description = 'Runs Burp XML exports or SSC upload ZIPs through the offline SSC simulator using the plugin JAR.'
+    group = 'verification'
+    dependsOn tasks.named('shadowJar'), tasks.named('testClasses')
+    def sscProvided = configurations.testRuntimeClasspath.filter {
+        it.name.startsWith('plugin-api-') || it.name.startsWith('slf4j-api-')
+    }
+    classpath = files(tasks.named('shadowJar').flatMap { it.archiveFile }) +
+            sourceSets.test.output.classesDirs + sscProvided
+    mainClass = 'com.fortify.plugin.burp.ssc.SscSimulator'
+    def reports = (project.findProperty('report') ?: '').toString().split(',').findAll { it }
+    if (reports.isEmpty()) {
+        reports = ["${projectDir}/src/test/resources/burp-current-format.xml",
+                   "${projectDir}/src/test/resources/sample-burp-report.xml",
+                   "${projectDir}/src/test/resources/sample-burp.xml"]
+    }
+    args(reports)
 }
 
 jacocoTestReport {
@@ -48,7 +116,7 @@ jacocoTestReport {
 }
 
 checkstyle {
-    toolVersion = '10.21.2'
+    toolVersion = '10.26.1' // Checkstyle 11+ requires a Java 21 runtime; the build toolchain is Java 17
     configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
     ignoreFailures = false
     maxWarnings = 0
@@ -58,6 +126,10 @@ dependencyCheck {
     failBuildOnCVSS = 7.0
     formats = ['HTML', 'JSON']
     skipConfigurations = ['checkstyle']
+    nvd {
+        // Optional; without a key NVD downloads are heavily rate limited.
+        apiKey = System.getenv('NVD_API_KEY') ?: ''
+    }
     data {
         directory = "${project.rootDir}/dc/dependency-check/data"
     }

@@ -1,0 +1,95 @@
+name: Release
+
+# Publishes a GitHub Release (tag v<version> + plugin JAR) whenever main contains a version
+# from build.gradle that has not been released yet. Bump `version` in build.gradle and
+# plugin.xml (a test enforces they match) and add a CHANGELOG entry to cut a release.
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v6
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v6
+
+    - name: Determine version
+      id: version
+      run: |
+        VERSION=$(./gradlew -q properties --property version | sed -n 's/^version: //p')
+        if ! echo "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}$'; then
+          echo "::error::Version '$VERSION' is not a valid SSC plugin version"; exit 1
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+          echo "v$VERSION is already released - nothing to do."
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Full build (tests, Checkstyle, XSD validation, JAR layout check), then run the packaged
+    # JAR through the offline SSC simulator against the bundled Burp sample exports.
+    - name: Build and verify plugin JAR
+      if: steps.version.outputs.exists == 'false'
+      run: ./gradlew build verifyReport
+
+    - name: Prepare release assets
+      if: steps.version.outputs.exists == 'false'
+      id: assets
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        JAR="build/libs/burp-fortify-ssc-parser-plugin-${VERSION}.jar"
+        test -f "$JAR"
+        (cd build/libs && sha256sum "$(basename "$JAR")" > "$(basename "$JAR").sha256")
+        # Release notes = the CHANGELOG section for this version.
+        awk -v v="$VERSION" '
+          $0 ~ "^## \\[" v "\\]" {found=1; next}
+          found && /^## \[/ {exit}
+          found {print}
+        ' CHANGELOG.md > build/release-notes.md
+        if [ ! -s build/release-notes.md ]; then
+          echo "::error::CHANGELOG.md has no section for [$VERSION]"; exit 1
+        fi
+        {
+          echo
+          echo "### Installation"
+          echo "Upload \`$(basename "$JAR")\` in SSC under **Administration > Plugins > Parsers**, then enable it."
+          echo "Upgrading: disable the previous version after uploading, then enable this one."
+          echo
+          echo "SHA-256: \`$(cut -d' ' -f1 "$JAR.sha256")\`"
+        } >> build/release-notes.md
+        echo "jar=$JAR" >> "$GITHUB_OUTPUT"
+
+    - name: Create GitHub release
+      if: steps.version.outputs.exists == 'false'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        VERSION: ${{ steps.version.outputs.version }}
+        JAR: ${{ steps.assets.outputs.jar }}
+      run: |
+        gh release create "v$VERSION" "$JAR" "$JAR.sha256" \
+          --target "$GITHUB_SHA" \
+          --title "v$VERSION" \
+          --notes-file build/release-notes.md

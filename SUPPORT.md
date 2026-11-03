@@ -5,8 +5,9 @@
 If you have questions or need help using the Fortify SSC Burp Suite Parser, please refer to the following resources:
 
 1.  **README.md**: Check the main documentation for setup and basic usage instructions.
-2.  **GitHub Issues**: Search existing issues to see if your question has already been answered. If not, feel free to open a new issue.
-3.  **OpenText Documentation**: Refer to the official [Fortify Software Security Center Documentation](https://www.microfocus.com/documentation/fortify-software-security-center/) for broader platform-level questions.
+2.  **WIKI.md**: See the [Wiki](WIKI.md) for architecture details and troubleshooting of common errors.
+3.  **GitHub Issues**: Search existing issues to see if your question has already been answered. If not, feel free to open a new issue.
+4.  **OpenText Documentation**: Refer to the official [OpenText Software Security Center (Fortify SSC) Documentation](https://www.opentext.com/support/documentation) for broader platform-level questions.
 
 ## Reporting Bugs
 

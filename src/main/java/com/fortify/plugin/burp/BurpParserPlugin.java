@@ -1,5 +1,7 @@
 package com.fortify.plugin.burp;
 
+import com.ctc.wstx.stax.WstxInputFactory;
+import com.fasterxml.jackson.dataformat.xml.XmlFactory;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fortify.plugin.api.BasicVulnerabilityBuilder;
 import com.fortify.plugin.api.ScanBuilder;
@@ -8,6 +10,7 @@ import com.fortify.plugin.api.ScanParsingException;
 import com.fortify.plugin.api.StaticVulnerabilityBuilder;
 import com.fortify.plugin.api.VulnerabilityHandler;
 import com.fortify.plugin.spi.ParserPlugin;
+import com.fortify.plugin.spi.VulnerabilityAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +21,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
+import javax.xml.stream.XMLInputFactory;
 
 /**
  * Parses Burp Suite XML reports and ingests vulnerabilities into Fortify SSC.
@@ -27,7 +32,34 @@ import java.util.Set;
  */
 public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute> {
     private static final Logger LOG = LoggerFactory.getLogger(BurpParserPlugin.class);
-    private final XmlMapper xmlMapper = new XmlMapper();
+
+    /** Conservative limit for core SSC string fields (category, file name, engine version). */
+    static final int MAX_FIELD_LENGTH = 255;
+    /** Limit for the vulnerability abstract. */
+    static final int MAX_ABSTRACT_LENGTH = 1024;
+    /** SSC limit for {@code LONG_STRING} custom attributes, as defined by the plugin API. */
+    static final int MAX_LONG_ATTRIBUTE_LENGTH = VulnerabilityAttribute.MAX_LONG_STRING_LENGTH;
+    private final XmlMapper xmlMapper = createSecureXmlMapper();
+
+    /**
+     * Creates an {@link XmlMapper} backed by a hardened Woodstox StAX factory.
+     * DTD processing and external entity resolution are explicitly disabled to prevent
+     * XXE (XML External Entity) and entity-expansion ("billion laughs") attacks from
+     * untrusted uploaded artifacts. Burp exports include an internal DTD subset that only
+     * declares elements and attributes, so these files still parse correctly.
+     * Woodstox is instantiated directly (rather than via {@code XMLInputFactory.newFactory()})
+     * so that the hardened, bundled implementation is always used regardless of the
+     * StAX provider visible on the Fortify SSC thread context classloader.
+     *
+     * @return a hardened XmlMapper instance
+     */
+    static XmlMapper createSecureXmlMapper() {
+        XMLInputFactory inputFactory = new WstxInputFactory();
+        inputFactory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.FALSE);
+        inputFactory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
+        inputFactory.setProperty(XMLInputFactory.IS_VALIDATING, Boolean.FALSE);
+        return new XmlMapper(XmlFactory.builder().xmlInputFactory(inputFactory).build());
+    }
 
     @Override
     public void start() throws Exception {
@@ -47,7 +79,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
     @Override
     public void parseScan(ScanData scanData, ScanBuilder scanBuilder) throws ScanParsingException, IOException {
         LOG.info("Parsing scan data for session: {}", scanData.getSessionId());
-        try (InputStream is = scanData.getInputStream(name -> name.toLowerCase().endsWith(".xml"))) {
+        try (InputStream is = scanData.getInputStream(name -> name.toLowerCase(Locale.ROOT).endsWith(".xml"))) {
             if (is == null) {
                 LOG.error("No Burp XML file found in the uploaded artifact for session: {}", scanData.getSessionId());
                 throw new ScanParsingException("No Burp XML file found in the uploaded artifact.");
@@ -59,11 +91,11 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
             }
             String version = burpItems.getBurpVersion();
             LOG.info("Detected Burp version: {}", version);
-            scanBuilder.setEngineVersion(safeTruncate(version != null ? version : "Unknown", 255));
+            scanBuilder.setEngineVersion(safeTruncate(version != null ? version : "Unknown", MAX_FIELD_LENGTH));
             scanBuilder.setScanDate(new Date());
             scanBuilder.completeScan();
         } catch (Exception e) {
-            LOG.error("Error parsing scan: " + e.getMessage(), e);
+            LOG.error("Error parsing scan: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -72,7 +104,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
     public void parseVulnerabilities(ScanData scanData, VulnerabilityHandler vulnerabilityHandler)
             throws ScanParsingException, IOException {
         LOG.info("Parsing vulnerabilities for session: {}", scanData.getSessionId());
-        try (InputStream is = scanData.getInputStream(name -> name.toLowerCase().endsWith(".xml"))) {
+        try (InputStream is = scanData.getInputStream(name -> name.toLowerCase(Locale.ROOT).endsWith(".xml"))) {
             if (is != null) {
                 BurpItems burpItems = xmlMapper.readValue(is, BurpItems.class);
                 if (burpItems != null && burpItems.getItems() != null) {
@@ -93,7 +125,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
                 LOG.error("No Burp XML file found during vulnerability parsing for session: {}", scanData.getSessionId());
             }
         } catch (Exception e) {
-            LOG.error("Error parsing vulnerabilities: " + e.getMessage(), e);
+            LOG.error("Error parsing vulnerabilities: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -102,7 +134,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         StaticVulnerabilityBuilder builder = vulnerabilityHandler.startStaticVulnerability(uniqueId);
         
         String name = item.getName() != null ? item.getName() : "Unknown";
-        builder.setCategory(safeTruncate(name, 255));
+        builder.setCategory(safeTruncate(name, MAX_FIELD_LENGTH));
         
         String host = item.getHost() != null ? item.getHost() : "";
         String path = item.getPath() != null ? item.getPath() : "";
@@ -110,31 +142,34 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         if (fileName.isEmpty()) {
             fileName = "Unknown";
         }
-        builder.setFileName(safeTruncate(fileName, 255));
+        builder.setFileName(safeTruncate(fileName, MAX_FIELD_LENGTH));
         
         builder.setPriority(mapPriority(item.getSeverity()));
         builder.setConfidence(mapConfidence(item.getConfidence()));
         builder.setImpact(mapImpact(item.getSeverity()));
         
         String detail = item.getIssueDetail() != null ? item.getIssueDetail() : name;
-        builder.setVulnerabilityAbstract(safeTruncate(detail, 1024));
+        builder.setVulnerabilityAbstract(safeTruncate(detail, MAX_ABSTRACT_LENGTH));
         
         // Custom attributes - Ensure non-null to avoid SSC rendering issues
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_NAME, safeTruncate(item.getName(), 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.SEVERITY, safeTruncate(item.getSeverity(), 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.CONFIDENCE, safeTruncate(item.getConfidence(), 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.FULL_FILE_NAME, safeTruncate(host + path, 255));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_DETAIL, safeTruncate(item.getIssueDetail(), 32000));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_BACKGROUND, safeTruncate(item.getIssueBackground(), 32000));
-        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_DETAIL, safeTruncate(item.getRemediationDetail(), 32000));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_NAME, safeTruncate(item.getName(), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.SEVERITY, safeTruncate(item.getSeverity(), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.CONFIDENCE, safeTruncate(item.getConfidence(), MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.FULL_FILE_NAME, safeTruncate(host + path, MAX_FIELD_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_DETAIL, safeTruncate(item.getIssueDetail(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.ISSUE_BACKGROUND, safeTruncate(item.getIssueBackground(), MAX_LONG_ATTRIBUTE_LENGTH));
+        builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_DETAIL, safeTruncate(item.getRemediationDetail(), MAX_LONG_ATTRIBUTE_LENGTH));
         builder.setStringCustomAttributeValue(BurpVulnerabilityAttribute.REMEDIATION_BACKGROUND,
-                safeTruncate(item.getRemediationBackground(), 32000));
+                safeTruncate(item.getRemediationBackground(), MAX_LONG_ATTRIBUTE_LENGTH));
         
         builder.completeVulnerability();
     }
 
     private String generateUniqueId(BurpItem item) {
         try {
+            // MD5 is used only as a stable, non-security fingerprint for issue correlation in SSC
+            // (32 hex chars fits SSC's ID column). Changing the algorithm would change every
+            // issue ID and break de-duplication against previously uploaded scans.
             MessageDigest digest = MessageDigest.getInstance("MD5");
             String name = item.getName() != null ? item.getName() : "";
             String host = item.getHost() != null ? item.getHost() : "";
@@ -163,14 +198,22 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         if (value == null) {
             return "";
         }
-        return value.length() > length ? value.substring(0, length) : value;
+        if (value.length() <= length) {
+            return value;
+        }
+        int end = length;
+        // Avoid splitting a surrogate pair, which would leave an invalid UTF-16 sequence.
+        if (Character.isHighSurrogate(value.charAt(end - 1))) {
+            end--;
+        }
+        return value.substring(0, end);
     }
 
     private BasicVulnerabilityBuilder.Priority mapPriority(String severity) {
         if (severity == null) {
             return BasicVulnerabilityBuilder.Priority.Low;
         }
-        switch (severity.toLowerCase()) {
+        switch (severity.toLowerCase(Locale.ROOT)) {
             case "critical":
                 return BasicVulnerabilityBuilder.Priority.Critical;
             case "high":
@@ -188,7 +231,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         if (confidence == null) {
             return 1.0f;
         }
-        switch (confidence.toLowerCase()) {
+        switch (confidence.toLowerCase(Locale.ROOT)) {
             case "certain": return 5.0f;
             case "firm": return 3.0f;
             case "tentative": return 1.0f;
@@ -200,7 +243,7 @@ public class BurpParserPlugin implements ParserPlugin<BurpVulnerabilityAttribute
         if (severity == null) {
             return 1.0f;
         }
-        switch (severity.toLowerCase()) {
+        switch (severity.toLowerCase(Locale.ROOT)) {
             case "critical": return 5.0f;
             case "high": return 4.0f;
             case "medium": return 3.0f;

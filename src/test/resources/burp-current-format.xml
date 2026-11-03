@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<!DOCTYPE issues [
+<!ELEMENT issues (issue*)>
+<!ATTLIST issues burpVersion CDATA "">
+<!ATTLIST issues exportTime CDATA "">
+<!ELEMENT issue (serialNumber, type, name, host, path, location, severity, confidence, issueBackground?, remediationBackground?, references?, vulnerabilityClassifications?, issueDetail?, issueDetailItems?, remediationDetail?, requestresponse*, collaboratorEvent*, infiltratorEvent*, staticAnalysis*, dynamicAnalysis*)>
+<!ELEMENT serialNumber (#PCDATA)>
+<!ELEMENT type (#PCDATA)>
+<!ELEMENT name (#PCDATA)>
+<!ELEMENT host (#PCDATA)>
+<!ATTLIST host ip CDATA "">
+<!ELEMENT path (#PCDATA)>
+<!ELEMENT location (#PCDATA)>
+<!ELEMENT severity (#PCDATA)>
+<!ELEMENT confidence (#PCDATA)>
+<!ELEMENT issueBackground (#PCDATA)>
+<!ELEMENT remediationBackground (#PCDATA)>
+<!ELEMENT references (#PCDATA)>
+<!ELEMENT vulnerabilityClassifications (#PCDATA)>
+<!ELEMENT issueDetail (#PCDATA)>
+<!ELEMENT issueDetailItems (issueDetailItem*)>
+<!ELEMENT issueDetailItem (#PCDATA)>
+<!ELEMENT remediationDetail (#PCDATA)>
+<!ELEMENT requestresponse (request?, response?, responseRedirected?)>
+<!ELEMENT request (#PCDATA)>
+<!ATTLIST request method CDATA "">
+<!ATTLIST request base64 (true|false) "false">
+<!ELEMENT response (#PCDATA)>
+<!ATTLIST response base64 (true|false) "false">
+<!ELEMENT responseRedirected (#PCDATA)>
+<!ELEMENT sender (#PCDATA)>
+<!ELEMENT message (#PCDATA)>
+<!ELEMENT conversation (#PCDATA)>
+<!ELEMENT recipient (#PCDATA)>
+<!ELEMENT recipients (recipient*)>
+<!ELEMENT smtp (sender, recipients, message, conversation)>
+<!ELEMENT collaboratorEvent (interactionType, originIp, time, lookupType?, lookupHost?, requestresponse?, smtp?)>
+<!ELEMENT interactionType (#PCDATA)>
+<!ELEMENT originIp (#PCDATA)>
+<!ELEMENT time (#PCDATA)>
+<!ELEMENT lookupType (#PCDATA)>
+<!ELEMENT lookupHost (#PCDATA)>
+<!ELEMENT infiltratorEvent (parameterName, platform, signature, stackTrace?, parameterValue?, collaboratorEvent)>
+<!ELEMENT parameterName (#PCDATA)>
+<!ELEMENT platform (#PCDATA)>
+<!ELEMENT signature (#PCDATA)>
+<!ELEMENT stackTrace (#PCDATA)>
+<!ELEMENT parameterValue (#PCDATA)>
+<!ELEMENT dynamicAnalysis (source, sink, sourceStackTrace, sinkStackTrace, eventListenerStackTrace, sourceValue, sinkValue, eventHandlerData, eventHandlerDataType, eventHandlerManipulatedData, poc, origin, isOriginChecked, sourceElementId, sourceElementName, eventFiredEventName, eventFiredElementId, eventFiredElementName, eventFiredOuterHtml)>
+<!ELEMENT staticAnalysis (source, sink, codeSnippets)>
+<!ELEMENT source (#PCDATA)>
+<!ELEMENT sink (#PCDATA)>
+<!ELEMENT sourceStackTrace (#PCDATA)>
+<!ELEMENT sinkStackTrace (#PCDATA)>
+<!ELEMENT eventListenerStackTrace (#PCDATA)>
+<!ELEMENT sourceValue (#PCDATA)>
+<!ELEMENT sinkValue (#PCDATA)>
+<!ELEMENT eventHandlerData (#PCDATA)>
+<!ELEMENT eventHandlerDataType (#PCDATA)>
+<!ELEMENT sourceElementId (#PCDATA)>
+<!ELEMENT sourceElementName (#PCDATA)>
+<!ELEMENT eventFiredEventName (#PCDATA)>
+<!ELEMENT eventFiredElementId (#PCDATA)>
+<!ELEMENT eventFiredElementName (#PCDATA)>
+<!ELEMENT eventFiredOuterHtml (#PCDATA)>
+<!ELEMENT eventHandlerManipulatedData (#PCDATA)>
+<!ELEMENT poc (#PCDATA)>
+<!ELEMENT origin (#PCDATA)>
+<!ELEMENT isOriginChecked (#PCDATA)>
+<!ELEMENT codeSnippets (codeSnippet*)>
+<!ELEMENT codeSnippet (#PCDATA)>
+]>
+<!-- Synthetic sample modelled on the current Burp Suite "Report selected issues" XML export
+     (internal DTD as shipped by Burp, Base64 request/response, optional newer elements).
+     All hosts and addresses are reserved documentation values (RFC 2606 / RFC 5737). -->
+<issues burpVersion="2025.12.4" exportTime="Wed Jan 07 10:15:30 UTC 2026">
+  <issue>
+    <serialNumber>1111111111111111111</serialNumber>
+    <type>1049088</type>
+    <name>SQL injection</name>
+    <host ip="192.0.2.10">https://app.example.com</host>
+    <path><![CDATA[/login]]></path>
+    <location><![CDATA[/login [username parameter]]]></location>
+    <severity>High</severity>
+    <confidence>Firm</confidence>
+    <issueBackground><![CDATA[<p>SQL injection vulnerabilities arise when user-controllable data is incorporated into database SQL queries in an unsafe manner.</p>]]></issueBackground>
+    <remediationBackground><![CDATA[<p>Use parameterized queries.</p>]]></remediationBackground>
+    <references><![CDATA[<ul><li><a href="https://portswigger.net/web-security/sql-injection">SQL injection</a></li></ul>]]></references>
+    <vulnerabilityClassifications><![CDATA[<ul><li><a href="https://cwe.mitre.org/data/definitions/89.html">CWE-89</a></li></ul>]]></vulnerabilityClassifications>
+    <issueDetail><![CDATA[The <b>username</b> parameter appears to be vulnerable to SQL injection attacks.]]></issueDetail>
+    <issueDetailItems>
+      <issueDetailItem><![CDATA[username]]></issueDetailItem>
+    </issueDetailItems>
+    <requestresponse>
+      <request method="POST" base64="true"><![CDATA[UE9TVCAvbG9naW4gSFRUUC8xLjENCkhvc3Q6IGFwcC5leGFtcGxlLmNvbQ0KDQp1c2VybmFtZT1hJw==]]></request>
+      <response base64="true"><![CDATA[SFRUUC8xLjEgNTAwIEludGVybmFsIFNlcnZlciBFcnJvcg0KDQo=]]></response>
+      <responseRedirected>false</responseRedirected>
+    </requestresponse>
+  </issue>
+  <issue>
+    <serialNumber>2222222222222222222</serialNumber>
+    <type>16777984</type>
+    <name>Strict transport security not enforced</name>
+    <host ip="192.0.2.10">https://app.example.com</host>
+    <path><![CDATA[/]]></path>
+    <location><![CDATA[/]]></location>
+    <severity>Low</severity>
+    <confidence>Certain</confidence>
+    <issueBackground><![CDATA[<p>The application fails to prevent users from connecting to it over unencrypted connections.</p>]]></issueBackground>
+    <remediationBackground><![CDATA[<p>Add the Strict-Transport-Security HTTP header.</p>]]></remediationBackground>
+  </issue>
+  <issue>
+    <serialNumber>3333333333333333333</serialNumber>
+    <type>5245344</type>
+    <name>Out-of-band resource load (HTTP)</name>
+    <host ip="198.51.100.7">http://legacy.example.org</host>
+    <path><![CDATA[/fetch]]></path>
+    <location><![CDATA[/fetch [url parameter]]]></location>
+    <severity>Information</severity>
+    <confidence>Tentative</confidence>
+    <issueDetail><![CDATA[It is possible to induce the application to retrieve the contents of an arbitrary external URL.]]></issueDetail>
+    <collaboratorEvent>
+      <interactionType>HTTP</interactionType>
+      <originIp>203.0.113.5</originIp>
+      <time>2026-Jan-07 10:14:59.123 UTC</time>
+      <requestresponse>
+        <request method="GET" base64="true"><![CDATA[R0VUIC8gSFRUUC8xLjENCg0K]]></request>
+        <response base64="true"><![CDATA[SFRUUC8xLjEgMjAwIE9LDQoNCg==]]></response>
+        <responseRedirected>false</responseRedirected>
+      </requestresponse>
+    </collaboratorEvent>
+  </issue>
+</issues>
