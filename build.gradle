@@ -1,7 +1,7 @@
 plugins {
     id 'java-library'
-    id 'com.gradleup.shadow' version '9.4.1'
-    id 'org.owasp.dependencycheck' version '12.2.2'
+    id 'com.gradleup.shadow' version '9.6.1'
+    id 'org.owasp.dependencycheck' version '13.0.0'
     id 'checkstyle'
     id 'jacoco'
 }
@@ -17,13 +17,15 @@ dependencies {
     compileOnly 'com.fortify.plugin:plugin-api:1.2.2320.0'
     testImplementation 'com.fortify.plugin:plugin-api:1.2.2320.0'
 
-    implementation 'org.slf4j:slf4j-api:2.0.16'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.21.2'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.3'
+    implementation 'org.slf4j:slf4j-api:2.0.20'
+    // The BOM keeps every Jackson module on the same version (avoids databind/dataformat drift).
+    implementation platform('com.fasterxml.jackson:jackson-bom:2.22.4')
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.0'
-    testImplementation 'org.mockito:mockito-core:5.23.0'
-    testImplementation 'org.mockito:mockito-junit-jupiter:5.23.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.1.3'
+    testImplementation 'org.mockito:mockito-core:5.24.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.24.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -31,6 +33,12 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
     }
+}
+
+// The plain (non-shaded) jar would otherwise be written to the same file name as the
+// shaded plugin jar. Give it a distinct classifier so the deployable artifact is unambiguous.
+tasks.named('jar') {
+    archiveClassifier.set('plain')
 }
 
 shadowJar {
@@ -48,7 +56,7 @@ jacocoTestReport {
 }
 
 checkstyle {
-    toolVersion = '10.21.2'
+    toolVersion = '10.26.1' // Checkstyle 11+ requires a Java 21 runtime; the build toolchain is Java 17
     configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
     ignoreFailures = false
     maxWarnings = 0
@@ -58,6 +66,10 @@ dependencyCheck {
     failBuildOnCVSS = 7.0
     formats = ['HTML', 'JSON']
     skipConfigurations = ['checkstyle']
+    nvd {
+        // Optional; without a key NVD downloads are heavily rate limited.
+        apiKey = System.getenv('NVD_API_KEY') ?: ''
+    }
     data {
         directory = "${project.rootDir}/dc/dependency-check/data"
     }

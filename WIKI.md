@@ -16,8 +16,9 @@ This plugin bridges the gap between PortSwigger's **Burp Suite** and OpenText's 
 
 ### Why use this plugin?
 - **Unified Dashboard:** View SAST and DAST results in one place.
-- **Deduplication:** Stable, deterministic SHA-256 issue generation prevents duplicate findings across scans.
-- **Rich Context:** Preserves Burp's detailed "Issue Background", "Remediation Detail", and HTTP request/response context inside SSC custom attributes.
+- **Deduplication:** Stable, deterministic issue IDs (MD5 fingerprint of Issue Name, Host, Path and Location) prevent duplicate findings across scans.
+- **Rich Context:** Preserves Burp's "Issue Detail", "Issue Background", "Remediation Detail" and "Remediation Background" inside SSC custom attributes. (HTTP request/response pairs are not currently imported.)
+- **Secure by Default:** The XML parser has DTD processing and external entity resolution disabled, so malicious uploads cannot trigger XXE or entity-expansion attacks.
 
 ---
 
@@ -26,7 +27,7 @@ This plugin bridges the gap between PortSwigger's **Burp Suite** and OpenText's 
 ### Requirements
 - **Fortify SSC:** Version 19.x or newer (fully compatible with 25.4.0).
 - **Burp Suite:** Any edition (Professional/Enterprise) capable of exporting XML.
-- **Java:** JDK 17+ (for building from source).
+- **Java:** JDK 17 (for building from source; the Gradle toolchain targets Java 17).
 
 ### Downloading the Plugin
 Download the latest `burp-fortify-ssc-parser-plugin-X.X.X.jar` from the [GitHub Releases](../../releases) page.
@@ -68,13 +69,13 @@ Fortify requires a metadata file to know which parser to invoke.
 The plugin implements the `ParserPlugin<BurpVulnerabilityAttribute>` interface from the Fortify Plugin SDK (`com.fortify.plugin:plugin-api`).
 
 ### Data Flow
-1. **`parseScan()`**: Validates the ZIP artifact, locates the XML file (case-insensitive `.xml`), and extracts top-level scan metadata (Engine Version, Export Time).
-2. **`parseVulnerabilities()`**: Uses Jackson's `XmlMapper` to stream and parse individual `BurpItem` or `issue` elements.
-3. **Mapping**: Translates Burp severity to Fortify priority (`High` -> `High`, `Medium` -> `Medium`, etc.).
+1. **`parseScan()`**: Validates the ZIP artifact, locates the XML file (case-insensitive `.xml`), and records the Burp version as the engine version. The scan date is set to the upload/processing time.
+2. **`parseVulnerabilities()`**: Uses a hardened Jackson `XmlMapper` (Woodstox, DTD/external entities disabled) to parse the `<items>/<item>` or `<issues>/<issue>` elements into `BurpItem` objects.
+3. **Mapping**: Translates Burp severity to Fortify priority (`High` -> `High`, `Medium` -> `Medium`, `Low`/`Information` -> `Low`), Burp confidence to Fortify confidence (`Certain` = 5, `Firm` = 3, `Tentative` = 1) and severity to impact. Duplicate issues within the same file are reported once.
 4. **Vulnerability Builder**: Constructs the Fortify model, populating standard fields and assigning `BurpVulnerabilityAttribute` custom fields.
 
 ### View Template
-The custom UI layout is defined in `src/main/resources/viewtemplate/ViewTemplate.json`. It registers a `TITLEBOX` and `COLLAPSE` layout to cleanly separate Issue Summaries from Technical Details inside the Fortify audit screen.
+The custom UI layout is defined in `src/main/resources/viewtemplate/ViewTemplate.json`. It uses `TITLEBOX`, `SIMPLE` and `COLLAPSE` templates (array-of-arrays layout, `customAttributes.` key prefix) to cleanly separate Issue Summaries from Technical Details inside the Fortify audit screen.
 
 ---
 
@@ -85,6 +86,10 @@ The custom UI layout is defined in `src/main/resources/viewtemplate/ViewTemplate
 **Error:** `No valid analysis result was found. Please verify the validity of the result file.`
 **Cause:** The uploaded ZIP file does not contain a file with a `.xml` extension, or the `scan.info` file is missing/incorrect.
 **Solution:** Ensure your ZIP file contains exactly one `.xml` file and one `scan.info` file with `engineType=BURP`.
+
+**Error:** `Undeclared general entity` / XML parse error mentioning a DOCTYPE or ENTITY.
+**Cause:** The XML declares custom entities. For security, the parser does not process DTD entity definitions.
+**Solution:** Use an unmodified Burp XML export; standard Burp exports do not rely on custom entities.
 
 **Error:** `Failed to parse Burp XML file.`
 **Cause:** The XML file is malformed, empty, or does not have a recognizable root element (`<items>` or `<issues>`).

@@ -24,6 +24,7 @@ Fortify SSC relies on external plugins to support third-party security tools. Th
 - **Rich Attribute Mapping:** Custom attributes ensure that Burp-specific data (e.g., Confidence, Issue Background, Remediation Detail) is fully visible in SSC.
 - **Custom View Template:** Includes a tailored UI template (`viewtemplate/ViewTemplate.json`) that organizes issue details cleanly within the SSC interface.
 - **Flexible Reports Support:** Parses both standard `Saved Items` XML and the newer `Burp Reports` (`<issues>`) XML structures, with full support for CDATA and complex tags.
+- **Hardened XML Parsing:** DTD processing and external entity resolution are explicitly disabled, protecting SSC from XXE and entity-expansion ("billion laughs") attacks in uploaded artifacts.
 - **Isolated Dependencies:** Utilizes Gradle Shadow to relocate internal libraries (e.g., Jackson), ensuring zero classloader conflicts within the Fortify environment.
 - **Enterprise CI/CD:** Fully integrated GitHub Actions workflow for automated testing, CodeQL security scanning, linting (Checkstyle), and build packaging.
 
@@ -33,7 +34,7 @@ Fortify SSC relies on external plugins to support third-party security tools. Th
 
 ### Prerequisites
 - **Java:** JDK 17
-- **Build Tool:** Gradle 9.4.1
+- **Build Tool:** Gradle 9.8.2 via the bundled wrapper (`./gradlew`) — no local Gradle install required
 - **Fortify SSC:** Version 19.x or later (fully tested and compatible with modern releases)
 - **Burp Suite:** Export capabilities to XML
 
@@ -46,12 +47,14 @@ The project uses the Gradle Shadow plugin to create a "Fat JAR" required by Fort
 git clone https://github.com/ptkvaibhav/burp-fortify-ssc-parser-plugin.git
 cd burp-fortify-ssc-parser-plugin
 
-# Build the Fat JAR
-./gradlew clean build shadowJar
+# Build, test and package the Fat JAR
+./gradlew clean build
 ```
 
 The resulting deployment artifact will be located at:
 `build/libs/burp-fortify-ssc-parser-plugin-2.0.0.jar`
+
+> **Note:** `build/libs/` also contains a `*-plain.jar` (unshaded classes only). Do **not** upload that one to SSC.
 
 ---
 
@@ -66,7 +69,7 @@ The resulting deployment artifact will be located at:
 ### 2. Uploading Scan Results
 Fortify SSC requires uploaded artifacts to specify their engine type.
 
-1. Export your Burp Suite scan results in **XML format** (e.g., `burp-results.xml`).
+1. Export your Burp Suite scan results in **XML format** (e.g., `burp-results.xml`). In Burp, select the issues, right-click, and choose **Report selected issues** → **XML**.
 2. Create a plain text file named `scan.info` in the same directory as your XML file.
 3. Add the following exact line to `scan.info`:
    ```text
@@ -86,7 +89,9 @@ Fortify SSC requires uploaded artifacts to specify their engine type.
 ### Code Quality
 The project enforces strict code quality standards:
 - **Linting:** Run `./gradlew checkstyleMain` to ensure code meets format requirements.
-- **Testing:** Run `./gradlew test` to execute comprehensive JUnit 5 and Mockito test suites verifying edge cases, duplicate handling, and CDATA parsing.
+- **Testing:** Run `./gradlew test` to execute the JUnit Jupiter 6 and Mockito test suites verifying edge cases, duplicate handling, CDATA parsing, locale independence and XML security (XXE) hardening.
+- **Full check:** `./gradlew build` runs compilation, tests, Checkstyle (main and test), JaCoCo coverage and produces the shaded plugin JAR.
+- **Dependency scan:** `./gradlew dependencyCheckAnalyze` runs OWASP Dependency-Check (fails on CVSS ≥ 7.0). Supplying an [NVD API key](https://nvd.nist.gov/developers/request-an-api-key) via `NVD_API_KEY` is strongly recommended.
 
 ---
 

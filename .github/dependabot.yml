@@ -4,7 +4,19 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      jackson:
+        patterns:
+          - "com.fasterxml.jackson*"
+      test-dependencies:
+        patterns:
+          - "org.junit*"
+          - "org.mockito*"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

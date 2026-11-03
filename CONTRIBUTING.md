@@ -23,14 +23,15 @@ The process described here has several goals:
 - Engage the community in working toward the best possible solutions.
 
 1. Fork the repository and create your branch from `main`.
-2. If you've added code that should be tested, add tests (JUnit 5 + Mockito).
-3. Ensure the test suite passes (`gradle test`).
-4. Ensure your code passes linting (`gradle checkstyleMain`).
-5. Update the documentation (README.md, etc.) if applicable.
-6. Submit a pull request using the provided **Pull Request Template**.
+2. If you've added code that should be tested, add tests (JUnit Jupiter 6 + Mockito).
+3. Ensure the test suite passes (`./gradlew test`).
+4. Ensure your code passes linting (`./gradlew checkstyleMain checkstyleTest`), or simply run `./gradlew build`, which runs everything.
+5. Update the documentation (README.md, WIKI.md, CHANGELOG.md) if applicable.
+6. **Never commit real scan data.** Test fixtures must use sanitized hosts (e.g. `example.com`, `192.0.2.x`) — no customer or internal hostnames, IPs, or request/response bodies.
+7. Submit a pull request using the provided **Pull Request Template**.
 
 ## Development Setup
-- Java 21+
-- Gradle 8.x
+- JDK 17 (the Gradle toolchain targets Java 17)
+- Gradle: use the bundled wrapper (`./gradlew`, currently Gradle 9.8.2) — no local install needed
 - Your favorite IDE (IntelliJ IDEA, Eclipse, VS Code).
 - See `README.md` for build instructions.

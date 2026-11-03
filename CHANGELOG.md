@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Security
+- Explicitly hardened XML parsing: the Jackson `XmlMapper` is now backed by a dedicated Woodstox factory with DTD support, external entities and validation disabled (defense-in-depth against XXE / entity-expansion, independent of library defaults or the SSC StAX provider).
+- Added `XmlSecurityTest` regression tests for XXE, billion-laughs, external DTD fetching, and acceptance of real Burp internal DTD subsets.
+- Removed an internal hostname and private IP address from a unit-test fixture (replaced with `example.com` / `192.0.2.10`).
+### Fixed
+- Severity, confidence and file-extension matching now use `Locale.ROOT`, fixing mis-mapping on servers with a Turkish default locale.
+- String truncation no longer splits UTF-16 surrogate pairs.
+- The plain (unshaded) JAR no longer overwrites the shaded plugin JAR at the same path; it now has a `-plain` classifier.
+- Plugin manifest vendor now identifies the project maintainer instead of OpenText.
+### Changed
+- Dependencies: Jackson aligned via `jackson-bom` 2.22.4 (previously mismatched 2.21.2/2.21.3), SLF4J 2.0.20, JUnit Jupiter 6.1.3, Mockito 5.24.0.
+- Build: Gradle wrapper 9.8.2, Shadow 9.6.1, OWASP Dependency-Check 13.0.0 (with optional `NVD_API_KEY`), Checkstyle 10.26.1.
+- CI: `actions/checkout` v7, `actions/setup-java` v6, `actions/upload-artifact` v7, `gradle/actions/setup-gradle` v6, `github/codeql-action` v4; CodeQL now also scans GitHub Actions workflows and builds Java explicitly; redundant CI Gradle invocations removed.
+- Dependabot now groups Jackson, test and GitHub Actions updates.
+- Documentation refreshed (README, WIKI, SECURITY, CONTRIBUTING, SUPPORT, GEMINI, templates) to match the current toolchain and behavior.
+
 ## [2.0.0] - 2026-04-20
 ### Added
 - Enterprise-grade readiness: added comprehensive JavaDoc documentation across the codebase.

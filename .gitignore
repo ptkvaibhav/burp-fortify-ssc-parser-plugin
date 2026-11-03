@@ -1,15 +1,29 @@
-.gradle
+# Gradle
+.gradle/
 build/
 bin/
+
+# Build outputs (the Gradle wrapper jar must stay tracked)
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.class
 *.zip
+
+# IDEs
 .settings/
 .project
 .classpath
 .factorypath
-config/checkstyle/google_checks.xml
-gradle-8.7/
-gradle-8.7-bin.zip
-InspectPluginApi.java
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# OWASP Dependency-Check local NVD cache
 dc/
+
+# Local scratch files
+config/checkstyle/google_checks.xml
+InspectPluginApi.java
