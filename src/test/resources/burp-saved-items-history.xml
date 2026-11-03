@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<!DOCTYPE items [
+<!ELEMENT items (item*)>
+<!ATTLIST items burpVersion CDATA "">
+<!ATTLIST items exportTime CDATA "">
+<!ELEMENT item (time, url, host, port, protocol, method, path, extension, request, status, responselength, mimetype, response, comment)>
+<!ELEMENT time (#PCDATA)>
+<!ELEMENT url (#PCDATA)>
+<!ELEMENT host (#PCDATA)>
+<!ATTLIST host ip CDATA "">
+<!ELEMENT port (#PCDATA)>
+<!ELEMENT protocol (#PCDATA)>
+<!ELEMENT method (#PCDATA)>
+<!ELEMENT path (#PCDATA)>
+<!ELEMENT extension (#PCDATA)>
+<!ELEMENT request (#PCDATA)>
+<!ATTLIST request base64 (true|false) "false">
+<!ELEMENT status (#PCDATA)>
+<!ELEMENT responselength (#PCDATA)>
+<!ELEMENT mimetype (#PCDATA)>
+<!ELEMENT response (#PCDATA)>
+<!ATTLIST response base64 (true|false) "false">
+<!ELEMENT comment (#PCDATA)>
+]>
+<!-- Synthetic sample of Burp's "Save items" (Proxy / HTTP history) export: HTTP messages, not scan issues.
+     Hosts and addresses are reserved documentation values. -->
+<items burpVersion="2025.12.4" exportTime="Wed Jan 07 10:20:00 UTC 2026">
+  <item>
+    <time>Wed Jan 07 10:10:00 UTC 2026</time>
+    <url><![CDATA[https://app.example.com/login]]></url>
+    <host ip="192.0.2.10">app.example.com</host>
+    <port>443</port>
+    <protocol>https</protocol>
+    <method><![CDATA[POST]]></method>
+    <path><![CDATA[/login]]></path>
+    <extension>null</extension>
+    <request base64="true"><![CDATA[UE9TVCAvbG9naW4gSFRUUC8xLjENCkhvc3Q6IGFwcC5leGFtcGxlLmNvbQ0KDQp1c2VybmFtZT1h]]></request>
+    <status>200</status>
+    <responselength>19</responselength>
+    <mimetype>text</mimetype>
+    <response base64="true"><![CDATA[SFRUUC8xLjEgMjAwIE9LDQoNCg==]]></response>
+    <comment></comment>
+  </item>
+  <item>
+    <time>Wed Jan 07 10:11:00 UTC 2026</time>
+    <url><![CDATA[https://app.example.com/]]></url>
+    <host ip="192.0.2.10">app.example.com</host>
+    <port>443</port>
+    <protocol>https</protocol>
+    <method><![CDATA[GET]]></method>
+    <path><![CDATA[/]]></path>
+    <extension>null</extension>
+    <request base64="true"><![CDATA[R0VUIC8gSFRUUC8xLjENCg0K]]></request>
+    <status>200</status>
+    <responselength>19</responselength>
+    <mimetype>HTML</mimetype>
+    <response base64="true"><![CDATA[SFRUUC8xLjEgMjAwIE9LDQoNCg==]]></response>
+    <comment></comment>
+  </item>
+</items>

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-11-03
+### Added
+- **HTTP evidence:** new *HTTP Request* and *HTTP Response* sections show every request/response pair of an issue. Burp's `base64` flag is honoured (exports with Base64 turned off work too), invalid Base64 is shown as-is instead of failing the upload, and the content is HTML-escaped and truncated safely at the 20,000-character limit.
+- **CWE:** a new *CWE* field (for example `CWE-79, CWE-116`) is extracted from Burp's vulnerability classifications.
+- **Vulnerability Classifications** and **References** sections (Burp's CWE/CAPEC links and reference material).
+- **Dynamic analysis (DOM):** source, sink, values, proof of concept and stack traces for DOM-based issues, all HTML-escaped.
+- **Scan date from Burp's `exportTime`** instead of the upload time. It is locale- and server-time-zone independent, handles zone names and offsets, and falls back safely.
+- A localization file with display names for all custom attributes.
+- Tests: golden issue IDs locking upgrade compatibility, HTML-escaping, encoding, truncation and time-zone tests, and a fixture covering DOM issues and plain-text HTTP messages (valid against Burp's DTD).
+- README: "How it works" diagram, quick start, a comparison with the official Fortify Burp parser, and a trademarks/affiliation notice.
+### Fixed
+- Burp's *Save items* export (Proxy/HTTP history, `<items>` root) was imported as if every HTTP request were a vulnerability ("Unknown", Low). Such files are now rejected with a message pointing to *Report selected issues → XML*, and non-issue entries are skipped. The documentation no longer claims *Saved items* support; that format never contained scan findings.
+- Scan dates from `exportTime` use Java's legacy zone tables, which unlike java.time are correct for BST, AEST and GST. `IST` is read as India Standard Time.
+
+### Changed
+- `data-version` raised to 2 (new custom attributes). Issue IDs, categories, priorities and file names are unchanged: verified identical to 2.0.1 on 459 real Burp issues.
+- The plugin icon and logo (previously PortSwigger's logo) were replaced with original artwork. The README now uses light and dark logo variants.
+- The plugin description in `plugin.xml` states that this is a community plugin that is not affiliated with OpenText or PortSwigger.
+
 ## [2.0.1] - 2026-11-03
 ### Security
 - Explicitly hardened XML parsing: the Jackson `XmlMapper` is now backed by a dedicated Woodstox factory with DTD support, external entities and validation disabled (defense-in-depth against XXE / entity-expansion, independent of library defaults or the SSC StAX provider).

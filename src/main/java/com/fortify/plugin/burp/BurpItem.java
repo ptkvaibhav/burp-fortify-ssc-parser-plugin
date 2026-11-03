@@ -1,6 +1,10 @@
 package com.fortify.plugin.burp;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+
+import java.util.List;
 
 /**
  * Represents a single vulnerability issue extracted from a Burp Suite XML report.
@@ -20,6 +24,16 @@ public class BurpItem {
     private String remediationBackground;
     private String issueDetail;
     private String remediationDetail;
+    private String references;
+    private String vulnerabilityClassifications;
+
+    @JacksonXmlElementWrapper(useWrapping = false)
+    @JacksonXmlProperty(localName = "requestresponse")
+    private List<BurpRequestResponse> requestResponses;
+
+    @JacksonXmlElementWrapper(useWrapping = false)
+    @JacksonXmlProperty(localName = "dynamicAnalysis")
+    private List<BurpDynamicAnalysis> dynamicAnalyses;
 
     public String getSerialNumber() {
         return serialNumber;
@@ -115,5 +129,37 @@ public class BurpItem {
 
     public void setRemediationDetail(String remediationDetail) {
         this.remediationDetail = remediationDetail;
+    }
+
+    public String getReferences() {
+        return references;
+    }
+
+    public void setReferences(String references) {
+        this.references = references;
+    }
+
+    public String getVulnerabilityClassifications() {
+        return vulnerabilityClassifications;
+    }
+
+    public void setVulnerabilityClassifications(String vulnerabilityClassifications) {
+        this.vulnerabilityClassifications = vulnerabilityClassifications;
+    }
+
+    public List<BurpRequestResponse> getRequestResponses() {
+        return requestResponses;
+    }
+
+    public void setRequestResponses(List<BurpRequestResponse> requestResponses) {
+        this.requestResponses = requestResponses;
+    }
+
+    public List<BurpDynamicAnalysis> getDynamicAnalyses() {
+        return dynamicAnalyses;
+    }
+
+    public void setDynamicAnalyses(List<BurpDynamicAnalysis> dynamicAnalyses) {
+        this.dynamicAnalyses = dynamicAnalyses;
     }
 }

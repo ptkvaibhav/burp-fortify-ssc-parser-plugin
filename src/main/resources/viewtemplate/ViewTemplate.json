@@ -39,8 +39,29 @@
           "key": "customAttributes.fullFileName",
           "templateId": "SIMPLE",
           "dataType": "string"
+        },
+        {
+          "type": "template",
+          "title": "CWE",
+          "key": "customAttributes.cwe",
+          "templateId": "SIMPLE",
+          "dataType": "string"
         }
       ]
+    },
+    {
+      "type": "template",
+      "title": "HTTP Request",
+      "key": "customAttributes.request",
+      "templateId": "COLLAPSE",
+      "dataType": "string"
+    },
+    {
+      "type": "template",
+      "title": "HTTP Response",
+      "key": "customAttributes.response",
+      "templateId": "COLLAPSE",
+      "dataType": "string"
     }
   ],
   [
@@ -74,6 +95,34 @@
           "type": "template",
           "title": "Remediation Background",
           "key": "customAttributes.remediationBackground",
+          "templateId": "COLLAPSE",
+          "dataType": "string"
+        },
+        {
+          "type": "template",
+          "title": "Dynamic Analysis (DOM)",
+          "key": "customAttributes.dynamicAnalysis",
+          "templateId": "COLLAPSE",
+          "dataType": "string"
+        }
+      ]
+    },
+    {
+      "type": "template",
+      "title": "Classifications & References",
+      "templateId": "TITLEBOX",
+      "items": [
+        {
+          "type": "template",
+          "title": "Vulnerability Classifications",
+          "key": "customAttributes.vulnerabilityClassifications",
+          "templateId": "COLLAPSE",
+          "dataType": "string"
+        },
+        {
+          "type": "template",
+          "title": "References",
+          "key": "customAttributes.references",
           "templateId": "COLLAPSE",
           "dataType": "string"
         }

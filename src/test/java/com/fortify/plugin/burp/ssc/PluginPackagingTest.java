@@ -90,6 +90,37 @@ public class PluginPackagingTest {
     }
 
     @Test
+    public void testEveryAttributeHasALocalizedName() throws Exception {
+        java.util.Properties messages = new java.util.Properties();
+        try (InputStream is = getClass().getResourceAsStream("/resources/messages_en.properties")) {
+            assertNotNull(is, "localization file missing");
+            messages.load(new java.io.InputStreamReader(is, StandardCharsets.UTF_8));
+        }
+        for (BurpVulnerabilityAttribute a : BurpVulnerabilityAttribute.values()) {
+            assertTrue(messages.containsKey(a.attributeName()), "no display name for " + a.attributeName());
+        }
+        Document doc = pluginXml();
+        var languages = doc.getElementsByTagNameNS("*", "language");
+        assertTrue(languages.getLength() > 0, "plugin.xml must declare the localization file");
+        for (int i = 0; i < languages.getLength(); i++) {
+            String loc = languages.item(i).getAttributes().getNamedItem("location").getNodeValue();
+            assertNotNull(getClass().getResource(loc), "localization file missing: " + loc);
+        }
+    }
+
+    @Test
+    public void testEveryAttributeIsShownInTheViewTemplate() throws Exception {
+        String template;
+        try (InputStream is = getClass().getResourceAsStream("/viewtemplate/ViewTemplate.json")) {
+            template = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        for (BurpVulnerabilityAttribute a : BurpVulnerabilityAttribute.values()) {
+            assertTrue(template.contains("\"customAttributes." + a.attributeName() + "\""),
+                    "attribute not displayed in SSC: " + a.attributeName());
+        }
+    }
+
+    @Test
     public void testServiceRegistration() {
         ServiceLoader<ParserPlugin> loader = ServiceLoader.load(ParserPlugin.class);
         boolean found = loader.stream().anyMatch(p -> p.type() == BurpParserPlugin.class);

@@ -6,7 +6,8 @@ Currently, the following versions are being supported with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 2.0.x   | :white_check_mark: |
+| 2.1.x   | :white_check_mark: |
+| 2.0.x   | :white_check_mark: (until 2.2.0) |
 | < 2.0   | :x:                |
 
 ## Reporting a Vulnerability
@@ -24,6 +25,7 @@ Please include:
 
 ## Security Measures
 
+- **Output encoding:** HTTP messages and DOM analysis values come from the scanned application, so they are HTML-escaped before being stored in SSC attributes, which SSC renders as HTML.
 - **Hardened XML parsing:** Uploaded Burp XML is untrusted input. DTD processing and external entity resolution are disabled to prevent XXE and entity-expansion attacks; regression tests (`XmlSecurityTest`) enforce this.
 - **Dependency isolation:** Jackson is relocated inside the shaded JAR to avoid classloader conflicts with Fortify SSC; `plugin-api` and SLF4J are provided by SSC and are not bundled (enforced by `verifyPluginJar`).
 - **Automated scanning:** CodeQL (Java and GitHub Actions workflows), Dependabot version/security updates, and OWASP Dependency-Check (`./gradlew dependencyCheckAnalyze`, fails on CVSS ≥ 7.0).
