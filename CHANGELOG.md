@@ -17,15 +17,17 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Dependencies: Jackson aligned via `jackson-bom` 2.22.4 (previously mismatched 2.21.2/2.21.3), SLF4J 2.0.20, JUnit Jupiter 6.1.3, Mockito 5.24.0.
 - Build: Gradle wrapper 9.8.2, Shadow 9.6.1, OWASP Dependency-Check 13.0.0 (with optional `NVD_API_KEY`), Checkstyle 10.26.1.
-- CI: `actions/checkout` v7, `actions/setup-java` v6, `actions/upload-artifact` v7, `gradle/actions/setup-gradle` v6, `github/codeql-action` v4; CodeQL now also scans GitHub Actions workflows and builds Java explicitly; redundant CI Gradle invocations removed.
+- CI: CodeQL job keeps the required `Analyze (java)` check name; `actions/checkout` v7, `actions/setup-java` v6, `actions/upload-artifact` v7, `gradle/actions/setup-gradle` v6, `github/codeql-action` v4; CodeQL now also scans GitHub Actions workflows and builds Java explicitly; redundant CI Gradle invocations removed.
 - Dependabot now groups Jackson, test and GitHub Actions updates (supersedes Dependabot PRs #36–#41, #44, #46).
 - Documented compatibility: SSC 23.2+ (Java 17 runtime) and Burp XML exports from 1.6 to 2025.x.
 ### Added
-- Offline SSC simulator (`SscSimulator`) and contract tests, plus `./gradlew verifyReport -Preport=...` for checking real Burp exports without access to SSC.
+- Offline SSC simulator (`SscSimulator`) and contract tests, plus `./gradlew verifyReport -Preport=...`, which loads the packaged plugin JAR via `META-INF/services` with only SSC-provided libraries on the classpath and checks real Burp exports without access to SSC.
+- Release workflow: merging a new `version` to `main` builds, verifies and publishes the GitHub Release (`v<version>` tag, plugin JAR and SHA-256).
+- Verified that 2.0.1 produces identical issue IDs, categories and priorities to 2.0.0 on 457 real Burp issues, so upgrading keeps SSC issue history.
 - `plugin.xml` validation against the official `pluginmanifest-1.0.xsd`, view-template rule checks, and a `verifyPluginJar` packaging check wired into `./gradlew build`.
 - Test fixture modelled on the current Burp XML export format (validated with Burp's internal DTD).
 ### Removed
-- Purged previously committed real scan data, generated reports/logs, build outputs and a bundled Gradle distribution from the git history.
+- Previously committed real scan data, generated reports/logs, build outputs and a bundled Gradle distribution are scheduled to be purged from the git history (performed by the maintainer after this release).
 - Documentation refreshed (README, WIKI, SECURITY, CONTRIBUTING, SUPPORT, GEMINI, templates) to match the current toolchain and behavior.
 
 ## [2.0.0] - 2026-04-20

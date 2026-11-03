@@ -18,7 +18,7 @@ The goal is to create a Java-based plugin for Fortify SSC that enables the inges
 - **Surgical Changes:** Focus on implementing the SPI interface (`com.fortify.plugin.spi.ParserPlugin`: `parseScan`, `parseVulnerabilities`) cleanly.
 - **Documentation:** Use Javadoc for complex parsing logic.
 - **Testing:** Every parser feature must be verified with a unit test using a sample Burp export. Use `SscSimulator` (test sources) to assert SSC contract compliance; `./gradlew verifyReport -Preport=<file>` checks real exports offline.
-- **Versioning:** Bump `version` in both `build.gradle` and `plugin.xml` for every release (a test enforces they match). Bump `data-version` only if custom attributes or the view template change.
+- **Versioning:** Bump `version` in both `build.gradle` and `plugin.xml` for every release (a test enforces they match) and add a `CHANGELOG.md` section; merging to `main` then publishes the release automatically (`.github/workflows/release.yml`). Bump `data-version` only if custom attributes or the view template change.
 
 ## File Structure Conventions
 - `src/main/java`: Plugin implementation.

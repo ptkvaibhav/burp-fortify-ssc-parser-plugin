@@ -13,7 +13,8 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze (${{ matrix.language }})
+    # The job name "Analyze (java)" is a required status check in the main branch ruleset.
+    name: Analyze (${{ matrix.label }})
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -25,10 +26,12 @@ jobs:
       matrix:
         include:
           - language: java-kotlin
+            label: java
             build-mode: manual
             # Keep the category used by earlier runs so alert history on main carries over.
             category: /language:java
           - language: actions
+            label: actions
             build-mode: none
             category: /language:actions
 

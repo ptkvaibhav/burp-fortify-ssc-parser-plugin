@@ -26,7 +26,7 @@ The process described here has several goals:
 2. If you've added code that should be tested, add tests (JUnit Jupiter 6 + Mockito).
 3. Ensure the test suite passes (`./gradlew test`).
 4. Ensure your code passes linting (`./gradlew checkstyleMain checkstyleTest`), or simply run `./gradlew build`, which runs everything.
-5. Update the documentation (README.md, WIKI.md, CHANGELOG.md) if applicable.
+5. Update the documentation (README.md, WIKI.md, CHANGELOG.md) if applicable. Optionally run `./gradlew verifyReport -Preport=<your sanitized export>` to check the packaged JAR end to end.
 6. **Never commit real scan data.** Test fixtures must use sanitized hosts (e.g. `example.com`, `192.0.2.x`) — no customer or internal hostnames, IPs, or request/response bodies.
 7. Submit a pull request using the provided **Pull Request Template**.
 

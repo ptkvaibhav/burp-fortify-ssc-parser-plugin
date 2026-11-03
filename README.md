@@ -93,11 +93,15 @@ Fortify SSC requires uploaded artifacts to specify their engine type.
 
 The test suite includes an **offline SSC simulator** (`SscSimulator`) that drives the plugin exactly like the SSC plugin runtime does and enforces SSC's parser contract (unique and stable IDs, every vulnerability completed, mandatory fields, declared custom attributes within the plugin-API length limits, `completeScan()` called, `scan.info` engine type). `./gradlew build` also validates `plugin.xml` against the official XSD and checks the JAR layout (`verifyPluginJar`).
 
-Run it against your own Burp exports or SSC upload ZIPs before uploading:
+Run it against your own Burp exports or SSC upload ZIPs before uploading. It tests the **packaged plugin JAR** (discovered through `META-INF/services`, with only the libraries SSC provides on the classpath) and exits non-zero if SSC would reject anything:
 
 ```bash
 ./gradlew verifyReport -Preport=/path/to/burp-results.xml,/path/to/results.zip
 ```
+
+### Releases
+
+Pre-built JARs are attached to [GitHub Releases](https://github.com/ptkvaibhav/burp-fortify-ssc-parser-plugin/releases). A release is published automatically when a new `version` (in `build.gradle` and `plugin.xml`) reaches `main` with a matching `CHANGELOG.md` section. The workflow builds, tests, runs `verifyReport` on the packaged JAR, and then publishes the tag, the JAR and its SHA-256.
 
 ---
 

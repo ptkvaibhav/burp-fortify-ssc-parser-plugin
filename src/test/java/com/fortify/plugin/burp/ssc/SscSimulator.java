@@ -6,7 +6,6 @@ import com.fortify.plugin.api.ScanData;
 import com.fortify.plugin.api.ScanEntry;
 import com.fortify.plugin.api.StaticVulnerabilityBuilder;
 import com.fortify.plugin.api.VulnerabilityHandler;
-import com.fortify.plugin.burp.BurpParserPlugin;
 import com.fortify.plugin.spi.ParserPlugin;
 import com.fortify.plugin.spi.VulnerabilityAttribute;
 
@@ -339,11 +338,34 @@ public final class SscSimulator {
             System.err.println("Usage: ./gradlew verifyReport -Preport=/path/to/burp.xml[,/other.zip]");
             System.exit(2);
         }
+        // Discover the plugin exactly like SSC does: via META-INF/services in the plugin JAR.
+        ParserPlugin<?> discovered = null;
+        for (ParserPlugin<?> p : java.util.ServiceLoader.load(ParserPlugin.class)) {
+            discovered = p;
+        }
+        if (discovered == null) {
+            System.err.println("No ParserPlugin registered via META-INF/services on the classpath");
+            System.exit(1);
+        }
+        Class<?> pluginClass = discovered.getClass();
+        URL source = pluginClass.getProtectionDomain().getCodeSource().getLocation();
+        System.out.printf(Locale.ROOT, "Plugin         : %s%n", pluginClass.getName());
+        System.out.printf(Locale.ROOT, "Loaded from    : %s%n", source);
+        Path sourcePath = Paths.get(source.toURI());
+        if (Files.isRegularFile(sourcePath)) {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(sourcePath));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest) {
+                hex.append(String.format(Locale.ROOT, "%02x", b));
+            }
+            System.out.printf(Locale.ROOT, "JAR SHA-256    : %s%n", hex);
+        }
         boolean allOk = true;
         for (String arg : args) {
             for (String file : arg.split(",")) {
                 Path path = Paths.get(file.trim());
-                Result r = run(new BurpParserPlugin(), readArtifact(path), "BURP");
+                Result r = run(pluginClass.asSubclass(ParserPlugin.class).getDeclaredConstructor().newInstance(),
+                        readArtifact(path), "BURP");
                 System.out.printf(Locale.ROOT, "%n=== %s%n", path);
                 System.out.printf(Locale.ROOT, "Engine version : %s%n", r.getScan().get("setEngineVersion"));
                 System.out.printf(Locale.ROOT, "Issues ingested: %d %s%n", r.getVulnerabilities().size(),

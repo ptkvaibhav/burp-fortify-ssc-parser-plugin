@@ -88,14 +88,27 @@ def verifyPluginJar = tasks.register('verifyPluginJar') {
 }
 tasks.named('check') { dependsOn verifyPluginJar }
 
-// Offline SSC ingestion check for real Burp exports, e.g.
+// Offline SSC ingestion check for real Burp exports, run against the actual shaded release JAR, e.g.
 //   ./gradlew verifyReport -Preport=/path/to/burp.xml[,/path/to/artifact.zip]
+// The classpath mirrors SSC: the plugin JAR plus only what SSC provides (plugin-api, SLF4J) and the
+// simulator itself, so packaging mistakes (missing classes, bad relocation, services file) are caught.
 tasks.register('verifyReport', JavaExec) {
-    description = 'Runs Burp XML exports or SSC upload ZIPs through the offline SSC contract simulator.'
+    description = 'Runs Burp XML exports or SSC upload ZIPs through the offline SSC simulator using the plugin JAR.'
     group = 'verification'
-    classpath = sourceSets.test.runtimeClasspath
+    dependsOn tasks.named('shadowJar'), tasks.named('testClasses')
+    def sscProvided = configurations.testRuntimeClasspath.filter {
+        it.name.startsWith('plugin-api-') || it.name.startsWith('slf4j-api-')
+    }
+    classpath = files(tasks.named('shadowJar').flatMap { it.archiveFile }) +
+            sourceSets.test.output.classesDirs + sscProvided
     mainClass = 'com.fortify.plugin.burp.ssc.SscSimulator'
-    args((project.findProperty('report') ?: '').toString().split(',').findAll { it })
+    def reports = (project.findProperty('report') ?: '').toString().split(',').findAll { it }
+    if (reports.isEmpty()) {
+        reports = ["${projectDir}/src/test/resources/burp-current-format.xml",
+                   "${projectDir}/src/test/resources/sample-burp-report.xml",
+                   "${projectDir}/src/test/resources/sample-burp.xml"]
+    }
+    args(reports)
 }
 
 jacocoTestReport {
