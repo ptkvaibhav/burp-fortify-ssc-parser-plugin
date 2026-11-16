@@ -22,7 +22,7 @@ dependencies {
     compileOnly 'org.slf4j:slf4j-api:2.0.20'
     testImplementation 'org.slf4j:slf4j-api:2.0.20'
     // The BOM keeps every Jackson module on the same version (avoids databind/dataformat drift).
-    implementation platform('com.fasterxml.jackson:jackson-bom:2.22.4')
+    implementation platform('com.fasterxml.jackson:jackson-bom:2.23.0')
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
